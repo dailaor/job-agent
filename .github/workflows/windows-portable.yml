@@ -1,0 +1,35 @@
+name: Windows portable package
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Create environment
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+      - name: Run offline tests
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\python.exe -m pip install -e .
+          $env:PYTHONPATH='src'
+          .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+      - name: Build portable zip
+        shell: pwsh
+        run: .\scripts\build_portable.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JobAgent-windows-x64
+          path: outputs/JobAgent-windows-x64.zip
+
