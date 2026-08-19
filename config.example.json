@@ -1,0 +1,148 @@
+{
+  "candidate": {
+    "name": "求职者",
+    "headline": "",
+    "years_experience": 0,
+    "education": "",
+    "skills": [],
+    "resume_path": "",
+    "resume_filename": "",
+    "resume_text_path": "",
+    "profile_source": "manual"
+  },
+  "preferences": {
+    "boss_keywords": ["AI 产品经理", "数据产品经理"],
+    "official_keywords": ["产品经理", "AI Product Manager", "Data Product Manager"],
+    "target_titles": ["产品经理", "AI 产品", "数据产品"],
+    "excluded_keywords": ["销售", "保险", "培训", "外包"],
+    "locations": ["北京", "上海", "深圳", "远程"],
+    "employment_types": ["全职"],
+    "work_modes": [],
+    "minimum_salary": null,
+    "max_experience_gap": 2,
+    "published_within_days": 30,
+    "unknown_field_policy": "keep",
+    "blacklisted_companies": [],
+    "company_tiers": {
+      "优先": ["示例大厂"],
+      "可接受": ["示例成长公司"],
+      "不投": []
+    },
+    "boss_daily_limit": 20,
+    "official_daily_limit": 10,
+    "strategy_mix": {"冲高": 0.25, "持平": 0.5, "保底": 0.25},
+    "strategy_mode": "balanced",
+    "channel_priority": ["official", "boss"],
+    "max_overqualification_years": 3,
+    "auto_send_resume_after_reply": false
+  },
+  "greetings": {
+    "default": "您好，我对{company}的{title}岗位很感兴趣，希望进一步沟通，谢谢！",
+    "AI 产品经理": "您好，我关注到{company}的{title}岗位，我的经历与该方向较匹配，希望进一步沟通，谢谢！"
+  },
+  "fixed_answers": {
+    "name": "求职者",
+    "phone": "",
+    "email": "",
+    "current_city": "",
+    "graduation_year": ""
+  },
+  "boss": {
+    "enabled": false,
+    "city_code": "101010100",
+    "city_name": "北京",
+    "headless": false,
+    "minimum_action_interval_seconds": 8,
+    "storage_state_path": ".job-agent/boss-storage-state.json",
+    "resume_display_name": ""
+  },
+  "official_sites": [
+    {
+      "id": "meituan-campus",
+      "name": "美团校招",
+      "enabled": true,
+      "strategy": "campus_api",
+      "adapter": "meituan",
+      "list_url": "https://zhaopin.meituan.com/web/campus",
+      "allowed_hosts": ["zhaopin.meituan.com"],
+      "max_results": 200,
+      "autofill": {
+        "status": "planned",
+        "profile": "meituan-campus-v1",
+        "allowed_hosts": ["zhaopin.meituan.com"]
+      }
+    },
+    {
+      "id": "didi-campus",
+      "name": "滴滴校招",
+      "enabled": true,
+      "strategy": "campus_api",
+      "adapter": "didi_moka",
+      "list_url": "https://app.mokahr.com/campus_apply/didiglobal/96064#/jobs",
+      "allowed_hosts": ["app.mokahr.com"],
+      "site_id": 96064,
+      "org_id": "didiglobal",
+      "max_results": 200,
+      "autofill": {
+        "status": "planned",
+        "profile": "moka-campus-v1",
+        "allowed_hosts": ["app.mokahr.com"]
+      }
+    },
+    {
+      "id": "kuaishou-campus",
+      "name": "快手校招",
+      "enabled": true,
+      "strategy": "campus_api",
+      "adapter": "kuaishou",
+      "list_url": "https://campus.kuaishou.cn/recruit/campus/e/#/campus/jobs?code=campusNTjtWbAZm&pageNum=1&recruitSubProjectCodes=20271779425607",
+      "allowed_hosts": ["campus.kuaishou.cn"],
+      "recruit_sub_project_codes": ["20271779425607"],
+      "share_code": "campusNTjtWbAZm",
+      "max_results": 200,
+      "autofill": {
+        "status": "planned",
+        "profile": "kuaishou-campus-v1",
+        "allowed_hosts": ["campus.kuaishou.cn"]
+      }
+    },
+    {
+      "id": "tencent-campus",
+      "name": "腾讯校招",
+      "enabled": true,
+      "strategy": "campus_api",
+      "adapter": "tencent",
+      "list_url": "https://join.qq.com/post.html",
+      "allowed_hosts": ["join.qq.com"],
+      "max_results": 200,
+      "autofill": {
+        "status": "planned",
+        "profile": "tencent-campus-v1",
+        "allowed_hosts": ["join.qq.com"]
+      }
+    },
+    {
+      "id": "jd-campus",
+      "name": "京东校招",
+      "enabled": true,
+      "strategy": "campus_api",
+      "adapter": "jd",
+      "list_url": "https://campus.jd.com/api/wx/position/index#/",
+      "allowed_hosts": ["campus.jd.com"],
+      "max_results": 200,
+      "autofill": {
+        "status": "planned",
+        "profile": "jd-campus-v1",
+        "allowed_hosts": ["campus.jd.com"]
+      }
+    }
+  ],
+  "mail": {
+    "enabled": false,
+    "host": "imap.example.com",
+    "port": 993,
+    "username": "name@example.com",
+    "password_env": "JOB_AGENT_IMAP_PASSWORD",
+    "folder": "INBOX"
+  }
+}

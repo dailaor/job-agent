@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>求职 Agent 控制台</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">JA</div>
+        <div><strong>Job Agent</strong><span>本地求职控制台</span></div>
+      </div>
+      <nav id="nav">
+        <button class="nav-item active" data-view="overview">总览</button>
+        <button class="nav-item" data-view="jobs">岗位池</button>
+        <button class="nav-item" data-view="applications">投递台账</button>
+        <button class="nav-item" data-view="config">配置</button>
+        <button class="nav-item" data-view="audit">审计日志</button>
+      </nav>
+      <div class="safety-card">
+        <span class="pulse"></span>
+        <div><strong>安全执行</strong><p>真实写操作必须再次确认；验证码与未知表单自动停下。</p></div>
+      </div>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <h1 id="page-title">求职工作台</h1>
+          <p class="page-description">在本机筛选岗位，保留每一步决策依据。</p>
+        </div>
+        <div class="header-actions">
+          <span id="last-refresh" class="muted"></span>
+          <button class="button ghost" id="refresh">刷新</button>
+          <button class="button primary" id="run-cycle">开始智能匹配</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-overview">
+        <div class="hero">
+          <div>
+            <h2>把时间留给值得投的岗位。</h2>
+            <p>沿用上次条件或重新设置本次目标。Agent 会从已适配渠道采集岗位，先过硬规则，再按冲高、持平和保底给出可解释结果。</p>
+          </div>
+          <div class="hero-actions">
+            <button class="button light" data-action="seed">体验演示数据</button>
+            <button class="button accent" data-open-task>开始一次匹配</button>
+          </div>
+        </div>
+
+        <div class="metrics" id="metrics"></div>
+
+        <div class="grid two">
+          <article class="panel">
+            <div class="panel-head">
+              <div><h3>投递策略分布</h3><p class="panel-help">只统计通过硬规则的岗位；“不投”属于过滤结果，不是第四种执行策略。</p></div>
+            </div>
+            <div id="strategy-chart" class="strategy-chart"></div>
+            <div id="skip-summary" class="skip-summary"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head split">
+              <div><h3>渠道健康度</h3><p class="panel-help">表示抓取适配器最近能否取得真实岗位，不代表岗位匹配度。</p></div>
+              <button class="button ghost small" data-go-config>配置渠道</button>
+            </div>
+            <div id="source-health" class="source-list"></div>
+          </article>
+        </div>
+
+        <article class="panel">
+          <div class="panel-head"><div><h3>从设置目标到确认投递</h3></div></div>
+          <div class="flow">
+            <div><b>岗位采集</b><small>已适配的固定渠道</small></div><i>→</i>
+            <div><b>硬规则</b><small>不满足即过滤</small></div><i>→</i>
+            <div><b>能力分类</b><small>冲高 · 持平 · 保底</small></div><i>→</i>
+            <div><b>渠道动作</b><small>沟通或官网提交</small></div><i>→</i>
+            <div><b>结果确认</b><small>HR 回复 / 邮件回执</small></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="view-jobs">
+        <article class="panel">
+          <div class="panel-head split">
+            <div><h3>统一岗位池</h3><p class="panel-help">不同渠道的岗位汇总展示，保留来源字段，并按渠道优先级跨渠道去重。</p></div>
+            <div class="toolbar">
+              <select id="job-status-filter"><option value="">全部状态</option></select>
+              <input id="job-search" placeholder="搜索岗位、公司或地点">
+              <button class="button ghost" data-action="discover">选择渠道抓取</button>
+              <button class="button primary" data-action="evaluate">评估新岗位</button>
+              <button class="button accent" data-action="plan-all">生成投递清单</button>
+            </div>
+          </div>
+          <div id="run-result" class="run-result" hidden></div>
+          <div class="table-wrap"><table><thead><tr><th>岗位 / 公司</th><th>来源渠道</th><th>投递策略</th><th>人匹配岗位</th><th>岗位满足人</th><th>状态</th><th>下一步</th></tr></thead><tbody id="jobs-body"></tbody></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-applications">
+        <div class="action-strip">
+          <div><strong>执行区</strong><span>演练不会改变招聘网站状态；真实执行会发送开场白或提交官网表单。</span></div>
+          <div>
+            <button class="button ghost" data-action="dry-run">执行演练</button>
+            <button class="button danger" data-action="live-run">真实执行</button>
+            <button class="button ghost" data-action="replies">检查 HR 回复</button>
+            <button class="button ghost" data-action="receipts">检查邮件回执</button>
+          </div>
+        </div>
+        <article class="panel">
+          <div class="panel-head"><div><h3>统一投递台账</h3></div></div>
+          <div class="table-wrap"><table><thead><tr><th>岗位 / 公司</th><th>渠道</th><th>策略</th><th>状态</th><th>更新时间</th><th>证据 / 异常</th></tr></thead><tbody id="applications-body"></tbody></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-config">
+        <article class="panel config-intro">
+          <div>
+            <h3>这里决定 Agent 找什么、从哪里找、哪些岗位不能投，以及可以执行到哪一步</h3>
+            <p>日常用户只需要填写下面的表单。官网 API 字段映射、页面选择器等开发配置保留在“高级 JSON”中。</p>
+          </div>
+          <button class="button primary" id="save-basic-config">保存用户配置</button>
+        </article>
+
+        <div class="config-sections">
+          <article class="panel config-card">
+            <div class="panel-head"><h3>候选人档案</h3><p class="panel-help">用于能力比较，不会自动编造或改写你的经历。</p></div>
+            <div class="form-grid two-cols">
+              <label><span>姓名</span><input id="cfg-name"></label>
+              <label><span>当前定位</span><input id="cfg-headline" placeholder="例如：3 年数据产品经理"></label>
+              <label><span>工作年限</span><input id="cfg-years" type="number" min="0" step="0.5"></label>
+              <label><span>最高学历</span><select id="cfg-education"><option>不限</option><option>大专</option><option>本科</option><option>硕士</option><option>博士</option></select></label>
+              <label class="span-2"><span>能力关键词</span><textarea id="cfg-skills" rows="3" placeholder="SQL、Python、数据分析、需求分析"></textarea><small>用逗号或换行分隔，分类只使用这里明确提供的能力。</small></label>
+              <div class="span-2 resume-setting">
+                <div><strong>当前简历</strong><span id="cfg-resume-name">尚未上传</span><small id="cfg-resume-path">上传后只保存在本机数据目录。</small></div>
+                <label class="button ghost file-button" for="cfg-resume-file">选择新简历<input id="cfg-resume-file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
+                <button class="button primary" id="cfg-resume-upload" type="button" disabled>替换当前简历</button>
+                <input id="cfg-resume" type="hidden">
+              </div>
+            </div>
+          </article>
+
+          <article class="panel config-card">
+            <div class="panel-head"><h3>岗位规则与策略</h3><p class="panel-help">先用硬规则过滤，再比较能力关系；每日额度只限制最终数量。</p></div>
+            <div class="form-grid two-cols">
+              <label><span>目标岗位</span><textarea id="cfg-target-titles" rows="3"></textarea></label>
+              <label><span>可接受地点</span><textarea id="cfg-locations" rows="3"></textarea></label>
+              <label><span>排除关键词</span><textarea id="cfg-excluded" rows="3"></textarea></label>
+              <label><span>公司黑名单</span><textarea id="cfg-blacklisted" rows="3"></textarea></label>
+              <fieldset class="choice-field span-2"><legend>职位类型</legend><div class="choice-row">
+                <label><input type="checkbox" name="cfg-employment" value="全职">全职</label>
+                <label><input type="checkbox" name="cfg-employment" value="实习">实习</label>
+                <label><input type="checkbox" name="cfg-employment" value="校招">校招</label>
+                <label><input type="checkbox" name="cfg-employment" value="兼职">兼职</label>
+              </div></fieldset>
+              <fieldset class="choice-field span-2"><legend>办公方式</legend><div class="choice-row">
+                <label><input type="checkbox" name="cfg-work-mode" value="现场">现场</label>
+                <label><input type="checkbox" name="cfg-work-mode" value="混合">混合</label>
+                <label><input type="checkbox" name="cfg-work-mode" value="远程">远程</label>
+              </div></fieldset>
+              <label><span>月薪最低期望（元）</span><input id="cfg-min-salary" type="number" min="0" step="1000" placeholder="留空表示不限"></label>
+              <label><span>最多接受经验差距（年）</span><input id="cfg-max-gap" type="number" min="0" max="20" step="0.5"></label>
+              <label><span>只看最近发布（天）</span><input id="cfg-recent-days" type="number" min="1" max="3650" placeholder="留空表示不限"></label>
+              <label><span>岗位未披露字段时</span><select id="cfg-unknown-policy"><option value="keep">保留，不因缺失直接过滤</option><option value="reject">按不符合处理</option></select></label>
+              <label><span>不投公司档位</span><textarea id="cfg-tier-skip" rows="3"></textarea></label>
+              <label><span>优先公司</span><textarea id="cfg-tier-priority" rows="3"></textarea></label>
+              <label><span>可接受公司</span><textarea id="cfg-tier-acceptable" rows="3"></textarea></label>
+              <label><span>BOSS 每日新沟通额度</span><input id="cfg-boss-limit" type="number" min="0" max="100"></label>
+              <label><span>官网每日投递额度</span><input id="cfg-official-limit" type="number" min="0" max="100"></label>
+            </div>
+          </article>
+
+          <article class="panel config-card" id="channel-settings">
+            <div class="panel-head"><h3>抓取渠道</h3><p class="panel-help">这里负责长期配置渠道；每次抓取时再从已启用渠道中选择本次要运行的几个。</p></div>
+            <div class="channel-config-block">
+              <div class="channel-config-title"><div><strong>BOSS直聘</strong><small>源码实验渠道；基础便携包不含浏览器运行时，默认关闭</small></div><label class="switch-label"><input id="cfg-boss-enabled" type="checkbox"><span>启用</span></label></div>
+              <div class="form-grid two-cols compact">
+                <label><span>BOSS 搜索关键词</span><textarea id="cfg-boss-keywords" rows="3"></textarea></label>
+                <label><span>城市名称</span><input id="cfg-boss-city-name"><span class="inline-label">城市编码</span><input id="cfg-boss-city-code"></label>
+              </div>
+            </div>
+            <div class="channel-config-block">
+              <div class="channel-config-title"><div><strong>官网 / ATS</strong><small>已内置美团、滴滴、快手、腾讯和京东校招；只运行预先适配的固定官网</small></div><button class="button ghost small" id="open-advanced-channel">编辑高级渠道定义</button></div>
+              <label><span>官网搜索关键词</span><textarea id="cfg-official-keywords" rows="3"></textarea></label>
+              <div id="configured-official-list" class="configured-channels"></div>
+            </div>
+          </article>
+
+          <article class="panel config-card">
+            <div class="panel-head"><h3>沟通、固定答案与回执</h3><p class="panel-help">BOSS 使用你预设的开场白；官网只填写确定性答案。</p></div>
+            <div class="form-grid two-cols">
+              <label class="span-2"><span>默认 BOSS 开场白</span><textarea id="cfg-greeting" rows="3"></textarea></label>
+              <label><span>联系电话</span><input id="cfg-answer-phone"></label>
+              <label><span>联系邮箱</span><input id="cfg-answer-email"></label>
+              <label><span>当前城市</span><input id="cfg-answer-city"></label>
+              <label><span>毕业年份</span><input id="cfg-answer-graduation"></label>
+              <label class="check-row"><input id="cfg-auto-resume" type="checkbox"><span>检测到 HR 有效回复后自动发送固定简历</span></label>
+              <label class="check-row"><input id="cfg-mail-enabled" type="checkbox"><span>启用官网邮件回执检查</span></label>
+              <label><span>IMAP 主机</span><input id="cfg-mail-host"></label>
+              <label><span>IMAP 用户名</span><input id="cfg-mail-username"></label>
+            </div>
+          </article>
+
+          <details class="panel advanced-config" id="advanced-config">
+            <summary><div><strong>高级配置（JSON）</strong><small>校园官网适配器、通用 API 映射、未来自动填表档案和完整配置</small></div><span>展开</span></summary>
+            <div class="advanced-body">
+              <p class="notice">只有适配新官网或排查渠道时需要修改。密码不写入配置；IMAP 密码通过环境变量提供。</p>
+              <textarea id="config-editor" spellcheck="false"></textarea>
+              <div class="editor-actions"><button class="button primary" id="save-json-config">验证并保存 JSON</button></div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="view" id="view-audit">
+        <article class="panel">
+          <div class="panel-head"><div><h3>不可省略的决策证据</h3></div></div>
+          <div id="events" class="timeline"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" role="status"></div>
+
+  <dialog id="task-dialog" class="task-dialog" aria-labelledby="task-title">
+    <div class="wizard-shell">
+      <div class="dialog-heading wizard-heading">
+        <div><h2 id="task-title">开始智能匹配</h2><p id="task-subtitle">可以沿用当前简历，也可以只为这次任务替换它。</p></div>
+        <button class="icon-button" id="close-task" type="button" aria-label="关闭">×</button>
+      </div>
+      <ol class="wizard-progress" aria-label="任务进度">
+        <li class="active" data-progress="resume"><span>1</span>简历</li>
+        <li data-progress="rules"><span>2</span>岗位条件</li>
+        <li data-progress="run"><span>3</span>获取结果</li>
+      </ol>
+      <div id="task-error" class="inline-error" role="alert" hidden></div>
+
+      <section class="wizard-step active" id="task-step-resume" aria-labelledby="task-resume-heading">
+        <div class="step-heading"><h3 id="task-resume-heading">本次使用哪份简历？</h3><p>已有简历时不需要重复上传。选择新文件后，点击“下一步”会在本机解析并覆盖旧版本。</p></div>
+        <div class="current-resume" id="task-current-resume">
+          <div class="file-glyph" aria-hidden="true">CV</div>
+          <div><strong id="task-current-resume-name">尚未上传简历</strong><span id="task-current-resume-meta">首次使用需要上传 PDF 或 DOCX</span></div>
+          <span class="status-dot neutral" id="task-resume-state">未就绪</span>
+        </div>
+        <label class="file-drop" for="task-resume-file">
+          <input id="task-resume-file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+          <strong>选择 PDF 或 DOCX</strong>
+          <span id="task-resume-selection">单个文件，最大 10 MB</span>
+        </label>
+        <p class="privacy-note">简历只会保存到这台电脑的本地数据目录，不会自动上传到模型服务。</p>
+      </section>
+
+      <section class="wizard-step" id="task-step-rules" aria-labelledby="task-rules-heading" hidden>
+        <div class="step-heading"><h3 id="task-rules-heading">这次想找什么岗位？</h3><p>岗位名称和地点是最常用条件；其他规则按需展开即可。</p></div>
+        <div class="form-grid two-cols wizard-primary-fields">
+          <label><span>岗位名称或方向 <b aria-hidden="true">*</b></span><textarea id="task-titles" rows="3" placeholder="例如：AI 产品经理、数据产品经理"></textarea></label>
+          <label><span>工作地点</span><textarea id="task-locations" rows="3" placeholder="例如：北京、上海、远程；留空表示不限"></textarea></label>
+        </div>
+
+        <details class="advanced-rules" id="task-advanced-rules">
+          <summary><span><strong>更多硬性条件</strong><small>职位类型、办公方式、薪资、经验、新鲜度与排除项</small></span><span class="summary-action">展开设置</span></summary>
+          <div class="advanced-rules-body">
+            <fieldset class="choice-field"><legend>职位类型</legend><div class="choice-row">
+              <label><input type="checkbox" name="task-employment" value="全职">全职</label>
+              <label><input type="checkbox" name="task-employment" value="实习">实习</label>
+              <label><input type="checkbox" name="task-employment" value="校招">校招</label>
+              <label><input type="checkbox" name="task-employment" value="兼职">兼职</label>
+            </div></fieldset>
+            <fieldset class="choice-field"><legend>办公方式</legend><div class="choice-row">
+              <label><input type="checkbox" name="task-work-mode" value="现场">现场</label>
+              <label><input type="checkbox" name="task-work-mode" value="混合">混合</label>
+              <label><input type="checkbox" name="task-work-mode" value="远程">远程</label>
+            </div></fieldset>
+            <div class="form-grid two-cols compact">
+              <label><span>月薪最低期望（元）</span><input id="task-min-salary" type="number" min="0" step="1000" placeholder="留空表示不限"></label>
+              <label><span>最多接受经验差距（年）</span><input id="task-max-gap" type="number" min="0" max="20" step="0.5"></label>
+              <label><span>只看最近发布（天）</span><input id="task-recent-days" type="number" min="1" max="3650" placeholder="留空表示不限"></label>
+              <label><span>岗位未披露字段时</span><select id="task-unknown-policy"><option value="keep">先保留，不因缺失直接过滤</option><option value="reject">直接按不符合处理</option></select></label>
+              <label><span>排除关键词</span><textarea id="task-excluded" rows="2" placeholder="例如：销售、外包、保险"></textarea></label>
+              <label><span>公司黑名单</span><textarea id="task-blacklisted" rows="2" placeholder="命中后直接过滤"></textarea></label>
+            </div>
+          </div>
+        </details>
+
+        <fieldset class="strategy-picker">
+          <legend>投递策略</legend>
+          <div class="strategy-options">
+            <label><input type="radio" name="task-strategy" value="stretch"><span><strong>冲刺优先</strong><small>提高“岗位满足我”的权重，并多保留略高机会</small></span></label>
+            <label><input type="radio" name="task-strategy" value="balanced" checked><span><strong>均衡匹配</strong><small>两个方向等权，以基本持平岗位为主</small></span></label>
+            <label><input type="radio" name="task-strategy" value="safe"><span><strong>保底优先</strong><small>提高“我匹配岗位”的权重与胜任把握</small></span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="channel-picker">
+          <legend>本次岗位渠道 <b aria-hidden="true">*</b></legend>
+          <p>只运行已启用且配置完整的适配器。</p>
+          <div id="task-channel-options" class="channel-options compact-options"></div>
+        </fieldset>
+      </section>
+
+      <section class="wizard-step task-loading" id="task-step-loading" aria-labelledby="task-loading-heading" hidden>
+        <div class="loading-mark" aria-hidden="true"><span></span></div>
+        <div class="step-heading"><h3 id="task-loading-heading">正在准备岗位结果</h3><p id="task-loading-message" role="status" aria-live="polite">正在保存本次设置…</p></div>
+        <ol class="loading-stages">
+          <li data-stage="resume"><span></span>确认简历</li>
+          <li data-stage="config"><span></span>保存筛选条件</li>
+          <li data-stage="discover"><span></span>从所选渠道获取岗位</li>
+          <li data-stage="evaluate"><span></span>硬规则与能力关系评估</li>
+        </ol>
+        <p class="privacy-note">不同渠道会独立返回状态；单个渠道失败不会抹掉其他渠道已经取得的岗位。</p>
+      </section>
+
+      <div class="dialog-actions wizard-actions" id="task-actions">
+        <button class="button ghost" id="task-cancel" type="button">取消</button>
+        <div><button class="button ghost" id="task-back" type="button" hidden>上一步</button><button class="button primary" id="task-next" type="button">下一步</button><button class="button primary" id="task-start" type="button" hidden>开始获取岗位</button></div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="channel-dialog" class="wide-dialog" aria-labelledby="channel-dialog-title">
+    <div class="dialog-body">
+      <div class="dialog-heading"><div><h3 id="channel-dialog-title">选择本次抓取渠道</h3><p>只会运行你勾选且已启用的渠道。不同渠道的岗位最终汇总到统一岗位池。</p></div><button class="icon-button" data-close-channel aria-label="关闭">×</button></div>
+      <div id="channel-options" class="channel-options"></div>
+      <div class="dialog-actions split-actions"><button class="button ghost" data-go-config>配置渠道</button><div><button class="button ghost" data-close-channel>取消</button><button class="button primary" id="start-discovery">开始抓取</button></div></div>
+    </div>
+  </dialog>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-dialog-title">
+    <form method="dialog">
+      <span class="dialog-icon">!</span>
+      <h3 id="confirm-dialog-title">确认真实执行</h3>
+      <p>这会改变招聘网站状态：向 BOSS 招聘者发送预设开场白，或提交已配置官网表单。系统不会绕过验证码，也不会自动重试不确定操作。</p>
+      <label for="confirm-text">输入 <b>真实执行</b> 继续</label>
+      <input id="confirm-text" autocomplete="off">
+      <div class="dialog-actions"><button value="cancel" class="button ghost">取消</button><button value="confirm" class="button danger" id="confirm-live">确认执行</button></div>
+    </form>
+  </dialog>
+  <script src="/app.js"></script>
+</body>
+</html>

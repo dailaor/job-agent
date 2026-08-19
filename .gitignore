@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.job-agent/
+data/
+outputs/
+work/
+config.json
+storage-state.json
+*.sqlite3*
