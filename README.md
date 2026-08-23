@@ -110,6 +110,7 @@ BOSS 和 `strategy: browser` 的官网实验能力需要：
 
 ## 维护文档
 
+- [产品需求文档](docs/REQUIREMENTS.md)：项目目标、目标用户、版本范围、功能需求、非功能要求和验收口径。
 - [技术架构](docs/ARCHITECTURE.md)：系统边界、组件职责、核心数据流、状态模型、存储、扩展契约和技术债。
 - [维护手册](docs/MAINTENANCE.md)：架构、改动地图、数据目录、测试和便携包发布。
 - [渠道适配指南](docs/CHANNEL_ADAPTERS.md)：配置型官网、Python 注册表扩展、健康状态和验收清单。
