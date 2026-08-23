@@ -110,6 +110,7 @@ BOSS 和 `strategy: browser` 的官网实验能力需要：
 
 ## 维护文档
 
+- [技术架构](docs/ARCHITECTURE.md)：系统边界、组件职责、核心数据流、状态模型、存储、扩展契约和技术债。
 - [维护手册](docs/MAINTENANCE.md)：架构、改动地图、数据目录、测试和便携包发布。
 - [渠道适配指南](docs/CHANNEL_ADAPTERS.md)：配置型官网、Python 注册表扩展、健康状态和验收清单。
 - [硬筛选字段说明](docs/HARD_FILTERS.md)：各字段的精确定义、未知值策略及与投递策略的关系。
