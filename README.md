@@ -1,263 +1,218 @@
-# 求职 Agent
+# 职来 Agent
 
-一个可解压运行、本地优先、固定渠道的开源求职 Agent。核心链路包括：可选替换 PDF/DOCX 简历、岗位采集、跨渠道去重、扩展硬条件、双向匹配评分、冲高/持平/保底清单、原始岗位跳转和本地投递台账。已内置美团、滴滴、快手、腾讯、京东五个校园招聘官网的只读岗位适配器；BYOK/Ollama 和浏览器自动填表属于后续扩展。
+> 让每一次投递都更值得。
 
-## 核心原则
+职来 Agent 是一个本地优先的智能求职 Agent，面向校招、社招等需要集中发现、筛选和管理岗位的求职场景。
 
-- 能力关系结果包括 `冲高 / 持平 / 保底 / 不投`；其中“不投”是过滤结果，只有前三种会进入清单。
-- 排序分开计算“人匹配岗位”和“岗位满足人”：冲刺为 `35% / 65%`，均衡为 `50% / 50%`，保底为 `65% / 35%`；策略还会调整三类岗位的清单配额。
-- 公司档位是独立排序维度，不能把“大公司”误判为“冲高”。
-- 每日额度只限制最终执行数，不参与岗位策略分类。
-- 默认流程只跳转原始岗位页，由用户确认并完成最终投递。
-- 不针对岗位改写简历，不生成求职信、开放题答案或未经用户提供的事实。
-- 不绕过验证码、不索取账号密码、不规避平台限制。
+项目关注的不是替用户批量海投，而是降低求职过程中三类重复成本：
 
-完整验收边界见 [TASK_ACCEPTANCE.md](TASK_ACCEPTANCE.md)。
+- 在多个招聘渠道中反复搜索和整理岗位；
+- 判断自己是否胜任岗位，以及岗位是否符合个人需求；
+- 重复填写申请信息，并持续跟踪投递、测评和面试状态。
 
-## 用户怎么使用
+系统从用户简历和求职目标出发，主动采集已适配渠道的岗位，先排除不符合硬性条件的机会，再结合规则、LLM Judge 和岗位情报 RAG 进行双向评估，最终形成冲高、持平、保底三档推荐，并保留可解释的判断依据。
+
+![职来 Agent 总览：岗位采集、策略分布和岗位来源](docs/assets/readme/overview.png)
+
+## 使用流程
 
 ```mermaid
 flowchart LR
-    A["首页开始匹配"] --> B["沿用或替换简历"]
-    B --> C["岗位名称与地点"]
-    C --> D["可选的更多硬条件"]
-    D --> E["策略与渠道"]
-    E --> F["采集、去重、过滤和评估"]
-    F --> G["统一岗位池"]
-    G --> H["跳转原始官网确认投递"]
-    H --> I["投递台账"]
+    A["上传或沿用简历"] --> B["设置岗位目标与硬性条件"]
+    B --> C["选择岗位渠道与投递策略"]
+    C --> D["采集并标准化岗位"]
+    D --> E["跨渠道去重与硬规则过滤"]
+    E --> F["LLM Judge 与 RAG 辅助判断"]
+    F --> G["冲高 / 持平 / 保底推荐"]
+    G --> H["跳转官网并辅助填写"]
+    H --> I["本地台账与状态跟踪"]
 ```
 
-再次使用时无需重复上传简历；选择新 PDF/DOCX 才会覆盖本机保存的旧简历。岗位名称和地点始终可见，职位类型、办公方式、最低薪资、经验差距、发布时间、排除词和公司黑名单收在“更多硬性条件”中，并自动沿用上次值。
+## 界面预览
 
-## Windows 解压即用
+### 1. 沿用或替换本地简历
 
-从 GitHub Actions artifact（或维护者手动附加的 Release 资产）下载 `JobAgent-windows-x64.zip`，解压到当前用户可写目录后双击 `JobAgent.exe`。程序会在同目录创建 `data/`，并自动打开本地控制台；配置、简历、岗位和台账都保存在这个目录中。
+支持 PDF 和 DOCX。用户再次使用时可以沿用当前简历，也可以只为本次任务替换它。
 
-基础 ZIP 包含本地页面、规则匹配、简历解析、SQLite、通用 JSON API 和五个校园官网只读适配器，不包含 Playwright/Chromium。因此 BOSS 和浏览器型官网会提示缺少浏览器依赖；它们需要从源码安装可选依赖。工作流当前只上传 Actions artifact，不会自动创建 GitHub Release。
+![匹配向导：沿用或替换本地简历](docs/assets/readme/resume-selection.png)
 
-维护者可运行以下命令构建同样的便携包：
+### 2. 设置岗位目标、策略与渠道
 
-```powershell
-.\scripts\build_portable.ps1
-```
+岗位名称和地点保持在主流程中，其他硬性条件按需展开；用户可以选择冲刺、均衡或保底策略，并决定本次运行哪些岗位渠道。
 
-构建产物位于 `outputs/JobAgent-windows-x64.zip`。直接下载 GitHub Source code 的开发者版本仍需 Python；不开发代码的用户应下载便携包。
+![岗位条件：岗位、地点、投递策略与本次渠道](docs/assets/readme/job-targets-and-channels.png)
 
-## 运行架构
+### 3. 获取并评估岗位
+
+各渠道独立执行，已取得的结果不会因单个渠道失败而丢失。岗位完成标准化后进入硬规则和能力关系评估。
+
+![获取结果：按渠道采集、标准化和评估](docs/assets/readme/matching-progress.png)
+
+### 4. 查看统一岗位池
+
+岗位池统一展示来源渠道、推荐策略、双向评分、过滤状态和原始岗位入口。
+
+![岗位池：双向评分、策略结果和原始岗位跳转](docs/assets/readme/job-pool.png)
+
+## 功能总览
+
+| 能力 | 说明 | 当前状态 |
+|---|---|---|
+| PDF/DOCX 简历 | 上传并解析简历，再次使用时可以沿用，也可以重新上传覆盖旧简历 | 已实现 |
+| 硬规则筛选 | 支持岗位名称、地点、用工类型、办公方式、最低薪资、经验差距、发布时间、排除词和公司黑名单 | 已实现 |
+| 五个官网岗位采集 | 从美团、滴滴、快手、腾讯和京东校园招聘官网采集公开岗位 | 已实现 |
+| 跨渠道去重 | 将不同渠道的岗位标准化，根据公司、岗位、地点等信息识别重复记录 | 已实现 |
+| 双向评分 | 分别判断“候选人是否匹配岗位”和“岗位是否满足候选人需求” | 已实现 |
+| 三档岗位推荐 | 根据用户策略和双向评分，将岗位分为冲高、持平和保底 | 已实现 |
+| 本地投递台账 | 保存岗位、评估结果、投递记录和状态事件，方便持续跟踪 | 已实现 |
+| LLM Judge | 通过可插拔评分接口接入大模型，对简历、JD 和岗位证据进行结构化判断 | 已实现，可选启用 |
+| 岗位情报 RAG | 检索 JD 之外的岗位要求与工作体验，为双向判断补充可追溯证据 | 已实现，持续完善 |
+| BOSS 浏览器流程 | 通过浏览器读取岗位和沟通状态，登录失效、验证码或页面变化时停止并转人工 | 持续完善 |
+| 邮件回执跟踪 | 根据公司、岗位、投递时间和邮件语义识别申请成功、测评、面试或拒绝事件 | 持续完善 |
+| 浏览器插件自动填表 | 复用用户确认过的结构化个人信息，辅助填写招聘官网中的基础表单 | 持续完善 |
+| 真实用户反馈校准 | 根据用户的保存、投递、跳过、纠正原因和后续面试结果持续校准推荐 | 持续完善 |
+| 属性级 RAG | 分别围绕薪资、工时、成长、文化、稳定性等属性检索和输出证据 | 持续完善 |
+
+## 官网岗位渠道
+
+项目通过独立适配器处理不同招聘官网的协议差异，再将结果转换为统一岗位结构。
+
+| 渠道 | 采集方式 |
+|---|---|
+| 美团校招 | 官方公开岗位接口 |
+| 滴滴校招 | Moka 岗位接口、会话初始化与响应解密 |
+| 快手校招 | 官方公开岗位接口 |
+| 腾讯校招 | 官方搜索接口与岗位详情接口 |
+| 京东校招 | 官方公开岗位接口 |
+
+渠道采用注册表方式管理。新增渠道时，只需实现对应适配器并注册，无需修改岗位过滤、评分、推荐和台账主流程。
+
+## 双向岗位评估
+
+职来 Agent 不使用单一综合分直接决定是否推荐岗位，而是将判断拆成两个方向。
+
+### 候选人是否匹配岗位
+
+主要判断：
+
+- 技能和岗位要求的覆盖程度；
+- 工作或项目经验与岗位职责的关联性；
+- 经验年限和岗位门槛之间的差距；
+- 候选人的能力是否能够迁移到目标岗位。
+
+### 岗位是否满足候选人
+
+主要判断：
+
+- 薪资是否达到最低期望；
+- 工作地点和办公方式是否可接受；
+- 工作强度是否符合个人取向；
+- 职责边界、成长空间、团队文化和稳定性是否符合需求。
+
+冲刺、均衡和保底策略会调整两个方向的权重，并影响冲高、持平、保底岗位在最终推荐清单中的比例。
+
+## 岗位情报 RAG
+
+岗位 JD 通常能够说明职责和基础要求，但不一定完整披露真实面试门槛、工作强度、薪酬结构、团队文化和成长空间。岗位情报 RAG 用于补足这些信息，辅助模型进行更有依据的岗位判断。
+
+当前岗位情报库包含：
+
+- 50 篇经过准入检查的岗位经历；
+- 147 个可检索的岗位证据块；
+- 覆盖腾讯、阿里、美团、快手和百度；
+- 覆盖产品、数据、算法和后端岗位族，目前以后端和算法内容为主；
+- 正职和实习分别存储、分别检索，避免不同用工类型的信息混用；
+- 证据主题包括职责、技能、面试、工作强度、薪酬、文化、成长、稳定性和办公方式。
+
+处理流程如下：
 
 ```text
-固定渠道采集
-  ├─ 美团 / 滴滴 Moka / 快手 / 腾讯 / 京东校园官网（基础便携包）
-  ├─ 配置型官网/ATS 公开 JSON API（基础便携包）
-  └─ BOSS / 浏览器选择器（源码可选、默认关闭）
-        ↓
-标准化 → 跨渠道去重 → 时效与硬规则
-        ↓
-人匹配岗位 + 岗位满足人 + 能力关系分类
-        ↓
-按冲高/持平/保底组合生成每日队列
-        ↓
-原始岗位页跳转 → 用户确认投递
-        ↓
-SQLite 台账、渠道健康度、审计事件
+可追溯岗位经历
+    ↓
+来源、公司、岗位、时效和内容准入检查
+    ↓
+脱敏、去重并建立父文档
+    ↓
+按决策主题切分证据块
+    ↓
+Hashing 向量 + BM25 混合检索
+    ↓
+生成“能力匹配”和“岗位需求”两路证据
+    ↓
+交给 LLM Judge 辅助决策并保留来源
 ```
 
-## 从源码运行
+能力侧主要使用职责、技能和面试证据，补充岗位真实关注的能力要求；岗位需求侧主要使用薪资、工时、成长、文化和稳定性证据，补充 JD 没有完整披露的岗位体验。
 
-要求 Python 3.11 或更高版本。核心依赖 `pypdf` 解析可读 PDF，`cryptography` 只用于解密滴滴 Moka 的公开岗位响应；真实浏览器渠道额外需要 Playwright。
+RAG 提供的是辅助证据，不会覆盖地点、学历、薪资下限等确定性硬规则。
+
+## 技术架构
+
+```mermaid
+flowchart TD
+    UI["本地 Web 控制台"] --> API["本地 API / Service"]
+    API --> RESUME["简历解析与用户配置"]
+    API --> ORCH["任务编排器"]
+
+    ORCH --> REGISTRY["渠道注册表"]
+    REGISTRY --> CAMPUS["官方招聘网站适配器"]
+    REGISTRY --> BOSS["BOSS 浏览器适配器"]
+
+    CAMPUS --> NORMALIZE["岗位标准化与跨渠道去重"]
+    BOSS --> NORMALIZE
+    NORMALIZE --> FILTER["硬规则过滤"]
+
+    FILTER --> RETRIEVAL["岗位情报检索"]
+    FILTER --> SCORING["规则评分"]
+    RETRIEVAL --> JUDGE["LLM Judge"]
+    SCORING --> STRATEGY["三档策略规划"]
+    JUDGE --> STRATEGY
+
+    STRATEGY --> POOL["统一岗位池"]
+    POOL --> LEDGER["投递台账与状态事件"]
+    LEDGER --> RECEIPT["网页 / 邮件回执跟踪"]
+
+    SQLITE[("SQLite 与本地文件")] --- API
+```
+
+### 主要技术组件
+
+- **前端：** 原生 HTML、CSS 和 JavaScript；
+- **后端：** Python 本地服务与任务编排；
+- **数据存储：** SQLite、本地简历和配置文件；
+- **岗位采集：** 渠道注册表、官方招聘网站适配器和可选 Playwright 浏览器适配器；
+- **岗位决策：** 硬规则、双向评分、LLM Judge 和策略规划器；
+- **知识检索：** 父子文档、Hashing 向量与 BM25 混合检索；
+- **模型接入：** 可替换的 ScoringPort，支持用户配置 API；
+- **本地发布：** PyInstaller Windows 便携包；
+- **安全边界：** 不绕过验证码、不索取账号密码，最终投递保留用户确认。
+
+## 快速开始
+
+### Windows 便携版
+
+从 GitHub Actions artifact 下载 `JobAgent-windows-x64.zip`，解压后运行 `JobAgent.exe`。配置、简历、岗位和投递记录都会保存在程序旁的本地 `data/` 目录中。
+
+### 从源码运行
 
 ```powershell
-cd "<解压后的项目目录>"
 py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e .
 .\.venv\Scripts\job-agent.exe init
-.\.venv\Scripts\job-agent.exe seed-demo
-.\.venv\Scripts\job-agent.exe evaluate
-.\.venv\Scripts\job-agent.exe plan --channel boss
-.\.venv\Scripts\job-agent.exe plan --channel official
 .\.venv\Scripts\job-agent.exe serve
 ```
 
-打开 `http://127.0.0.1:8765`。演示岗位不会访问真实网站。
+打开 `http://127.0.0.1:8765` 即可进入本地控制台。
 
-BOSS 和 `strategy: browser` 的官网实验能力需要：
+## 项目文档
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".[browser]"
-.\.venv\Scripts\python.exe -m playwright install chromium
-```
+- [产品需求文档](docs/REQUIREMENTS.md)
+- [技术架构](docs/ARCHITECTURE.md)
+- [维护手册](docs/MAINTENANCE.md)
+- [渠道适配指南](docs/CHANNEL_ADAPTERS.md)
+- [硬筛选字段说明](docs/HARD_FILTERS.md)
+- [贡献指南](CONTRIBUTING.md)
 
-## 首次配置
+## License
 
-1. 运行 `job-agent init` 生成 `config.json`。
-2. 打开控制台，点击“开始智能匹配”，上传 PDF/DOCX；再次使用时可以直接沿用，也可以替换。可读文本会在本机提取明确技能、年限和学历，扫描版 PDF 或复杂版式需在配置页手动校正。
-3. 填写岗位名称和地点；按需展开职位类型、办公方式、薪资、经验差距、发布时间、排除词和公司黑名单。
-4. 选择投递策略和本次渠道。向导会保存本次条件、采集并评估岗位，再进入统一岗位池。
-5. 初次保持 `boss.enabled=false`、`auto_send_resume_after_reply=false`；可先用演示数据验证分类。
-6. 示例配置已启用五个校园官网，只会按本次岗位关键词做只读采集；可在配置页逐个取消勾选，单个官网失效不会中止其他官网。
-
-如果 BOSS 会话页不暴露文件上传控件，而是从账号中已有简历选择，必须把 `boss.resume_display_name` 配置为页面实际显示的固定简历名称；Agent 无法确认名称一致时不会发送。
-
-控制台中的“配置”页面面向两类使用场景：
-
-- 日常用户表单：候选人能力、目标岗位、地点、排除条件、公司档位、BOSS/官网关键词、每日额度、开场白、固定答案和邮件回执。
-- 高级 JSON：新增官网 API 映射、页面选择器和投递表单字段，主要用于开发或维护适配器。
-
-配置决定“有哪些渠道可以运行”；岗位池的“选择渠道抓取”按钮决定“本次具体运行其中哪几个渠道”。所有渠道的岗位会汇总到统一岗位池，同时保留来源并按渠道优先级去重。
-
-配置保存时会验证额度、策略和硬规则。简历上传接口会单独校验文件类型、内容结构和 10 MB 大小限制；上传后的简历与本地提取文本固定保存在数据库旁的 `resumes/` 中，并只保留当前版本。文件、文本或配置保存失败会恢复旧版本；即使旧文件被移动或删除，页面仍可打开并要求用户重新上传。
-
-## 维护文档
-
-- [产品需求文档](docs/REQUIREMENTS.md)：项目目标、目标用户、版本范围、功能需求、非功能要求和验收口径。
-- [技术架构](docs/ARCHITECTURE.md)：系统边界、组件职责、核心数据流、状态模型、存储、扩展契约和技术债。
-- [维护手册](docs/MAINTENANCE.md)：架构、改动地图、数据目录、测试和便携包发布。
-- [渠道适配指南](docs/CHANNEL_ADAPTERS.md)：配置型官网、Python 注册表扩展、健康状态和验收清单。
-- [硬筛选字段说明](docs/HARD_FILTERS.md)：各字段的精确定义、未知值策略及与投递策略的关系。
-- [贡献指南](CONTRIBUTING.md)：提交渠道和规则改动的最低要求。
-
-## BOSS 直聘（源码实验能力）
-
-本项目参考并吸收了用户提供的 `boss-agent-capability.zip`，同时修正了其中的关键搜索路径：
-
-```text
-正确：https://www.zhipin.com/web/geek/jobs?query=...&city=...
-错误：https://www.zhipin.com/web/geek/job?query=...&city=...
-```
-
-BOSS 不包含在基础便携包能力中，默认关闭，且本项目当前不承诺处理登录或验证码。源码安装 Playwright 后可由维护者做只读适配验证；HTTP 200 的“加载中”壳不被当成岗位。当前选择器集中在 `src/job_agent/connectors/boss_selectors.py`。
-
-登录：
-
-```powershell
-.\.venv\Scripts\job-agent.exe boss-login --timeout 5
-```
-
-以下命令仅供在用户明确授权、平台规则允许且自行管理会话时进行实验验证：
-
-```powershell
-# 1. 只读发现
-.\.venv\Scripts\job-agent.exe discover --channel boss
-
-# 2. 评估和生成计划
-.\.venv\Scripts\job-agent.exe evaluate
-.\.venv\Scripts\job-agent.exe plan --channel boss
-
-# 3. 演练，不写站点
-.\.venv\Scripts\job-agent.exe execute --channel boss
-
-# 4. 明确确认后真实发送预设开场白
-.\.venv\Scripts\job-agent.exe execute --channel boss --live
-```
-
-真实动作没有自动重试。点击动作后缺少成功证据会标记 `结果待核验`；验证码、登录失效和选择器变化会停止当前渠道。默认产品流程不依赖这些写操作。
-
-检查回复：
-
-```powershell
-.\.venv\Scripts\job-agent.exe check-replies
-```
-
-只有检测到非系统的 HR 入站消息，应用才进入 `HR已有效回复`。发送简历仍建议先在控制台或命令行单独确认；启用自动发送前必须用自己的账号做一次人工批准的冒烟测试。
-
-## 官网 / ATS 适配器
-
-官网渠道是固定白名单，不动态适配任意网站。`official_sites` 中每项支持：
-
-- `campus_api`：选择仓库内已经验收的校园官网专用适配器，当前值为 `meituan`、`didi_moka`、`kuaishou`、`tencent`、`jd`。
-- `json_api`：从公开 JSON 岗位列表读取结构化数据。
-- `browser`：源码安装 Playwright 后，从已知页面选择器读取可见岗位卡片。
-- `form`：源码中的实验性执行协议；`live=false` 只演练填写，开放题或缺失映射转人工，默认用户流程仍由用户在官网提交。
-
-五个内置渠道会把搜索关键词传给官网接口，并在本地再次核对岗位名称、JD 与地点；结果保留稳定岗位 ID、完整可取得的 JD、地点、发布时间和对应详情页。配置中的 `autofill.profile` 是未来浏览器插件的稳定路由键，页面会明确显示“自动填表待适配”；当前版本不会填写或提交任何表单，也不会处理登录和验证码。
-
-| 渠道 | `adapter` | 采集方式 | 自动填表 |
-|---|---|---|---|
-| 美团校招 | `meituan` | 官方公开岗位 JSON | 待适配 |
-| 滴滴校招 | `didi_moka` | Moka 岗位接口与响应解密 | 待适配 |
-| 快手校招 | `kuaishou` | 官方公开岗位 JSON | 待适配 |
-| 腾讯校招 | `tencent` | 官方搜索与岗位详情 JSON | 待适配 |
-| 京东校招 | `jd` | 官方公开岗位 JSON | 待适配 |
-
-JSON API 示例：
-
-```json
-{
-  "id": "target-careers",
-  "name": "目标公司招聘",
-  "enabled": true,
-  "strategy": "json_api",
-  "list_url": "https://careers.example.com/api/jobs",
-  "allowed_hosts": ["careers.example.com"],
-  "records_path": "data.jobs",
-  "mapping": {
-    "id": "id",
-    "title": "title",
-    "company": "company",
-    "location": "location",
-    "description": "description",
-    "url": "detailUrl",
-    "apply_url": "applyUrl",
-    "salary_min": "salaryMin",
-    "salary_max": "salaryMax",
-    "experience_min": "experienceMin",
-    "experience_max": "experienceMax",
-    "employment_type": "employmentType",
-    "work_mode": "workMode",
-    "published_at": "publishedAt",
-    "deadline": "deadline"
-  },
-  "form": {
-    "required_answer_keys": ["name", "phone", "email"],
-    "fields": {
-      "name": "input[name='name']",
-      "phone": "input[name='phone']",
-      "email": "input[name='email']"
-    },
-    "resume_selector": "input[type='file']",
-    "submit_selector": "button[type='submit']",
-    "success_selector": ".application-success",
-    "success_text": "申请已提交"
-  }
-}
-```
-
-必须从目标官网当前页面重新确认每个选择器，不能把示例选择器直接用于生产。
-
-## 邮件回执（源码实验能力）
-
-基础版本不配置邮箱登录。源码保留默认关闭的 IMAP 回执检查器；启用后只在官网已提交记录的时间窗口内检查最多 200 封近期邮件，并同时匹配公司/岗位身份和成功/拒绝语义。
-
-```powershell
-$env:JOB_AGENT_IMAP_PASSWORD='应用专用密码'
-.\.venv\Scripts\job-agent.exe check-receipts
-```
-
-如果页面已经点击提交但没有网页证据，状态会是 `结果待核验`，不会因暂时没有邮件而自动重投。
-
-## 命令速查
-
-```text
-init                 创建示例配置（不覆盖已有文件）
-serve                启动本地 Web 控制台
-seed-demo            导入四条离线演示岗位
-discover             从已启用固定渠道采集
-evaluate             执行硬规则、能力分类和评分
-plan                 按渠道额度与策略组合生成队列
-execute              默认只演练；--live 才改变网站状态
-boss-login           手动登录并保存本地会话
-check-replies        检查 BOSS HR 有效回复
-check-receipts       检查官网邮件回执
-run-cycle            发现、评估、计划；--live 才执行写操作
-```
-
-## 测试
-
-```powershell
-$env:PYTHONPATH='src'
-py -3.13 -m unittest discover -s tests -v
-py -3.13 -m compileall -q src tests
-```
-
-单元测试不访问招聘网站。真实页面选择器、登录状态、简历按钮和官网成功证据必须在用户自己的账号、网络、授权和最新平台规则下单独冒烟验证。
+[MIT License](LICENSE)
