@@ -14,7 +14,7 @@
 
 ![职来 Agent 智能推荐：理由、风险、待遇、六组体验及证据入口](docs/assets/readme/recommendations.png)
 
-[下载最新 Windows 便携版](https://github.com/dailaor/job-agent/releases/tag/v0.2.0-alpha) · [查看项目需求](docs/REQUIREMENTS.md) · [查看技术架构](docs/ARCHITECTURE.md)
+[下载最新 Windows 便携版](https://github.com/dailaor/job-agent/releases/tag/v0.2.1-alpha) · [查看项目需求](docs/REQUIREMENTS.md) · [查看技术架构](docs/ARCHITECTURE.md)
 
 ## 智能推荐工作卡
 

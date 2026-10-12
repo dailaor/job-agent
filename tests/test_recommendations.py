@@ -22,7 +22,9 @@ from job_agent.web import ApiHandler
 
 class RecommendationTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temporary = tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1] / "work")
+        work_root = Path(__file__).resolve().parents[1] / "work"
+        work_root.mkdir(parents=True, exist_ok=True)
+        self.temporary = tempfile.TemporaryDirectory(dir=work_root)
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
         self.database_path = self.directory / "agent.sqlite3"
