@@ -1,0 +1,420 @@
+{
+  "schema_version": "1.0",
+  "methodology": {
+    "status": "provisional_needs_human_adjudication",
+    "primary_comparison": "同一 deepseek-v4-flash 在无社区证据与有社区证据条件下的配对比较",
+    "labeling": "初始金标在运行模型前依据 JD、候选人资料和已审校社区事实摘要预先制定；生产门禁需要两名独立复核者和分歧仲裁",
+    "dimensions": ["strategy", "ability_relation", "need_score_range"],
+    "controls": ["正职与实习严格隔离", "引用有效性", "证据顺序稳定性", "无证据时需求维度弃权"]
+  },
+  "defaults": {
+    "candidate": {
+      "name": "评测候选人",
+      "headline": "",
+      "years_experience": 0,
+      "education": "本科",
+      "skills": [],
+      "resume_path": "",
+      "resume_filename": "",
+      "resume_text_path": "",
+      "profile_source": "benchmark"
+    },
+    "preferences": {
+      "target_titles": [],
+      "excluded_keywords": [],
+      "locations": ["北京", "上海", "深圳", "杭州"],
+      "employment_types": ["全职"],
+      "work_modes": [],
+      "workload_preference": "balanced",
+      "role_boundary_preference": "no_preference",
+      "growth_priority": "medium",
+      "stability_priority": "medium",
+      "culture_preferences": [],
+      "community_risk_avoidances": [],
+      "minimum_salary": null,
+      "max_experience_gap": 3,
+      "published_within_days": 3650,
+      "unknown_field_policy": "keep",
+      "blacklisted_companies": [],
+      "company_tiers": {
+        "优先": [],
+        "可接受": [],
+        "不投": []
+      },
+      "strategy_mode": "balanced",
+      "max_overqualification_years": 4
+    },
+    "job": {
+      "published_at": "2026-08-20T00:00:00+08:00",
+      "education": "本科"
+    },
+    "expected": {
+      "minimum_rag_ability_citations": 1,
+      "minimum_rag_need_citations": 0
+    }
+  },
+  "cases": [
+    {
+      "id": "tencent-full-time-backend-match",
+      "tags": ["腾讯", "full_time", "backend", "match"],
+      "candidate": {
+        "headline": "3 年 Java/Go 后端工程师，做过高并发服务与消息系统",
+        "years_experience": 3,
+        "skills": ["Java", "Go", "MySQL", "Redis", "Kafka", "Linux", "TCP", "系统设计"]
+      },
+      "preferences": {
+        "target_titles": ["后端开发"],
+        "employment_types": ["全职"],
+        "minimum_salary": 25000
+      },
+      "job": {
+        "title": "腾讯云 Java 后端开发（全职）",
+        "company": "腾讯",
+        "location": "深圳",
+        "description": "全职岗位。负责高并发服务、缓存、消息队列与稳定性建设，要求掌握 Java 或 Go、MySQL、Redis、Kafka、Linux、TCP，并能完成系统设计与故障排查。",
+        "salary_min": 28000,
+        "salary_max": 38000,
+        "experience_min": 2,
+        "experience_max": 5,
+        "metadata": {
+          "employment_type": "full_time",
+          "work_mode": "onsite",
+          "required_skills": ["Java", "Go", "MySQL", "Redis", "Kafka", "Linux", "TCP", "系统设计"]
+        }
+      },
+      "expected": {
+        "strategy": "持平",
+        "ability_relation": "基本持平",
+        "need_score_range": [45, 75],
+        "minimum_rag_citations": 1
+      },
+      "gold_rationale": "候选人经验与核心栈覆盖完整；社区证据补充腾讯后端对并发、网络、存储和排障深度要求，岗位吸引力与压力并存。"
+    },
+    {
+      "id": "tencent-internship-product-match",
+      "tags": ["腾讯", "internship", "product", "employment-separation"],
+      "candidate": {
+        "headline": "有一段 AI 产品实习，能独立完成需求分析、PRD 与数据复盘",
+        "years_experience": 0.5,
+        "skills": ["需求分析", "PRD", "用户研究", "数据分析", "SQL", "RAG", "结构化表达"]
+      },
+      "preferences": {
+        "target_titles": ["产品策划"],
+        "employment_types": ["实习"],
+        "role_boundary_preference": "clear",
+        "community_risk_avoidances": ["职责边界模糊"],
+        "minimum_salary": null
+      },
+      "job": {
+        "title": "腾讯 PCG 产品策划实习生",
+        "company": "腾讯",
+        "location": "深圳",
+        "description": "实习岗位。参与产品需求分析、方案设计、数据复盘和跨团队协作，要求能够撰写 PRD、进行用户研究并结构化表达观点；有 AI 产品或 RAG 项目经验优先。",
+        "experience_min": 0,
+        "experience_max": 1,
+        "metadata": {
+          "employment_type": "internship",
+          "work_mode": "onsite",
+          "required_skills": ["需求分析", "PRD", "用户研究", "数据分析", "SQL", "RAG", "结构化表达"]
+        }
+      },
+      "expected": {
+        "strategy": "持平",
+        "ability_relation": "基本持平",
+        "need_score_range": [40, 70],
+        "minimum_rag_citations": 1,
+        "minimum_rag_need_citations": 1
+      },
+      "gold_rationale": "简历与 JD 能力基本对齐；实习证据显示群面结构化表达要求高，且部分团队产品与开发边界不清，需求满足度应保持中等而非盲目乐观。"
+    },
+    {
+      "id": "alibaba-full-time-backend-match",
+      "tags": ["阿里", "full_time", "backend", "match"],
+      "candidate": {
+        "headline": "4 年 Java 后端工程师，负责过交易链路和分布式调度",
+        "years_experience": 4,
+        "skills": ["Java", "Spring Boot", "MySQL", "Redis", "Kafka", "JVM", "并发", "分布式系统"]
+      },
+      "preferences": {
+        "target_titles": ["后端研发"],
+        "employment_types": ["全职"],
+        "growth_priority": "high",
+        "culture_preferences": ["目标清晰", "及时反馈"],
+        "minimum_salary": 28000
+      },
+      "job": {
+        "title": "阿里云 Java 后端研发（全职）",
+        "company": "阿里",
+        "location": "杭州",
+        "description": "全职岗位。负责云平台后端服务和分布式调度，要求掌握 Java、Spring Boot、MySQL、Redis、Kafka、JVM 与并发，具备系统设计和线上排障经验。",
+        "salary_min": 30000,
+        "salary_max": 42000,
+        "experience_min": 3,
+        "experience_max": 6,
+        "metadata": {
+          "employment_type": "full_time",
+          "required_skills": ["Java", "Spring Boot", "MySQL", "Redis", "Kafka", "JVM", "并发", "分布式系统"]
+        }
+      },
+      "expected": {
+        "strategy": "持平",
+        "ability_relation": "基本持平",
+        "need_score_range": [45, 70],
+        "minimum_rag_citations": 1,
+        "minimum_rag_need_citations": 1
+      },
+      "gold_rationale": "候选人能力覆盖核心要求；社区证据表明面试技术深度较高，入职后还强调主动澄清目标和自驱学习，需求判断应为中等。"
+    },
+    {
+      "id": "alibaba-internship-data-match",
+      "tags": ["阿里", "internship", "data", "sparse-role"],
+      "candidate": {
+        "headline": "数据研发方向硕士生，完成过离线数仓与 Spark 项目",
+        "years_experience": 0.5,
+        "education": "硕士",
+        "skills": ["SQL", "Python", "Hive", "Spark", "MapReduce", "数仓建模", "数据倾斜治理"]
+      },
+      "preferences": {
+        "target_titles": ["数据研发"],
+        "employment_types": ["实习"],
+        "minimum_salary": null
+      },
+      "job": {
+        "title": "淘天数据研发实习生",
+        "company": "阿里",
+        "location": "杭州",
+        "description": "实习岗位。参与离线数仓建设、数据建模和任务性能治理，要求熟悉 SQL、Hive、Spark、MapReduce、维度建模，并能分析数据倾斜问题。",
+        "experience_min": 0,
+        "experience_max": 1,
+        "metadata": {
+          "employment_type": "internship",
+          "required_skills": ["SQL", "Hive", "Spark", "MapReduce", "数仓建模", "数据倾斜治理"]
+        }
+      },
+      "expected": {
+        "strategy": "持平",
+        "ability_relation": "基本持平",
+        "need_score_range": [45, 75],
+        "minimum_rag_citations": 1
+      },
+      "gold_rationale": "能力覆盖数仓核心要求；当前数据岗知识仅一篇，足以补充面试范围但不足以强推断文化、强度或稳定性，因此需求分数范围较宽。"
+    },
+    {
+      "id": "meituan-full-time-algorithm-stretch",
+      "tags": ["美团", "full_time", "algorithm", "stretch"],
+      "candidate": {
+        "headline": "2 年大模型与 RAG 算法经验，缺少搜索推荐线上业务经历",
+        "years_experience": 2,
+        "education": "硕士",
+        "skills": ["Python", "PyTorch", "Transformer", "RAG", "向量检索", "模型评测"]
+      },
+      "preferences": {
+        "target_titles": ["搜索推荐算法"],
+        "employment_types": ["全职"],
+        "minimum_salary": 26000
+      },
+      "job": {
+        "title": "美团搜索推荐算法工程师（全职）",
+        "company": "美团",
+        "location": "北京",
+        "description": "全职岗位。负责搜索排序、推荐建模和 LBS 场景优化，同时探索 RAG 在业务中的应用；要求掌握 Python、PyTorch、推荐系统、搜索排序、LBS 建模和线上实验。",
+        "salary_min": 30000,
+        "salary_max": 45000,
+        "experience_min": 2,
+        "experience_max": 5,
+        "metadata": {
+          "employment_type": "full_time",
+          "required_skills": ["Python", "PyTorch", "推荐系统", "搜索排序", "LBS", "RAG"]
+        }
+      },
+      "expected": {
+        "strategy": "冲高",
+        "ability_relation": "岗位略高",
+        "need_score_range": [50, 80],
+        "minimum_rag_citations": 1
+      },
+      "gold_rationale": "大模型能力可迁移，但缺少推荐、排序与 LBS 的核心业务经验；社区面经强调业务理解、模型选型和落地复盘，适合冲高而非持平。"
+    },
+    {
+      "id": "meituan-internship-product-stretch",
+      "tags": ["美团", "internship", "product", "stretch"],
+      "candidate": {
+        "headline": "传统互联网产品实习生，擅长需求分析和数据复盘，AI 技术基础有限",
+        "years_experience": 0.5,
+        "skills": ["需求分析", "PRD", "用户研究", "SQL", "数据分析", "竞品分析"]
+      },
+      "preferences": {
+        "target_titles": ["产品"],
+        "employment_types": ["实习"],
+        "growth_priority": "high",
+        "culture_preferences": ["导师反馈", "真实业务参与"],
+        "minimum_salary": null
+      },
+      "job": {
+        "title": "美团大模型平台产品实习生",
+        "company": "美团",
+        "location": "北京",
+        "description": "实习岗位。参与大模型评测中台、知识库与 RAG 产品方案，负责需求分析、PRD、bad case 归因和模型评测；要求理解 RAG、模型训练评测与基础接口数据流。",
+        "experience_min": 0,
+        "experience_max": 1,
+        "metadata": {
+          "employment_type": "internship",
+          "required_skills": ["需求分析", "PRD", "RAG", "模型评测", "bad case分析", "接口数据流"]
+        }
+      },
+      "expected": {
+        "strategy": "冲高",
+        "ability_relation": "岗位略高",
+        "need_score_range": [55, 80],
+        "minimum_rag_citations": 1,
+        "minimum_rag_need_citations": 1
+      },
+      "gold_rationale": "通用产品能力具备，但社区证据显示岗位明显偏技术，要求理解模型训练、评测、RAG 切分和接口数据流；成长性积极，能力定位为冲高。"
+    },
+    {
+      "id": "kuaishou-full-time-backend-match-high-load",
+      "tags": ["快手", "full_time", "backend", "need-risk"],
+      "candidate": {
+        "headline": "4 年 Go/C++ 后端工程师，做过广告消息链路与性能优化",
+        "years_experience": 4,
+        "skills": ["Go", "C++", "MySQL", "Redis", "Kafka", "Linux", "并发", "性能优化"]
+      },
+      "preferences": {
+        "target_titles": ["后端开发"],
+        "employment_types": ["全职"],
+        "workload_preference": "low_intensity",
+        "community_risk_avoidances": ["长期高强度", "晚下班"],
+        "minimum_salary": 30000
+      },
+      "job": {
+        "title": "快手商业化 Go 后端开发（全职）",
+        "company": "快手",
+        "location": "北京",
+        "description": "全职岗位。负责广告高并发链路、消息处理和性能优化，要求掌握 Go 或 C++、MySQL、Redis、Kafka、Linux、并发与系统性能分析。",
+        "salary_min": 33000,
+        "salary_max": 48000,
+        "experience_min": 3,
+        "experience_max": 6,
+        "metadata": {
+          "employment_type": "full_time",
+          "required_skills": ["Go", "C++", "MySQL", "Redis", "Kafka", "Linux", "并发", "性能优化"]
+        }
+      },
+      "expected": {
+        "strategy": "持平",
+        "ability_relation": "基本持平",
+        "need_score_range": [35, 60],
+        "minimum_rag_citations": 1,
+        "minimum_rag_need_citations": 1
+      },
+      "gold_rationale": "能力高度匹配；社区帖子给出约早十晚九、leader 面压力与团队强度风险，需求满足度应明显低于只看薪资地点的判断，但尚不足以自动判为不投。"
+    },
+    {
+      "id": "kuaishou-internship-backend-match",
+      "tags": ["快手", "internship", "backend", "employment-separation"],
+      "candidate": {
+        "headline": "后端方向硕士生，做过 Java AI 服务和链路压测",
+        "years_experience": 0.8,
+        "education": "硕士",
+        "skills": ["Java", "Redis", "MySQL", "消息队列", "RPC", "LangChain", "LangGraph", "性能测试"]
+      },
+      "preferences": {
+        "target_titles": ["后端开发"],
+        "employment_types": ["实习"],
+        "workload_preference": "low_intensity",
+        "community_risk_avoidances": ["长期高强度", "流程长期停滞"],
+        "minimum_salary": null
+      },
+      "job": {
+        "title": "快手 Java 后端开发实习生",
+        "company": "快手",
+        "location": "杭州",
+        "description": "实习岗位。参与 AI 服务后端开发和检索生成链路优化，要求熟悉 Java、Redis、MySQL、消息队列、RPC、LangChain 或 LangGraph，并能进行性能测试。",
+        "experience_min": 0,
+        "experience_max": 1,
+        "metadata": {
+          "employment_type": "internship",
+          "required_skills": ["Java", "Redis", "MySQL", "消息队列", "RPC", "LangChain", "LangGraph", "性能测试"]
+        }
+      },
+      "expected": {
+        "strategy": "持平",
+        "ability_relation": "基本持平",
+        "need_score_range": [35, 60],
+        "minimum_rag_citations": 1,
+        "minimum_rag_need_citations": 1
+      },
+      "gold_rationale": "候选人项目与岗位高度对齐；实习证据仍反映流程偏慢和团队强度较大，不能引用正职作息来直接下结论，但需求侧应保守。"
+    },
+    {
+      "id": "baidu-full-time-backend-stretch",
+      "tags": ["百度", "full_time", "backend", "stretch"],
+      "candidate": {
+        "headline": "3 年 Java 后端工程师，做过 RAG 检索服务但缺少 Go/C++ 大规模系统经验",
+        "years_experience": 3,
+        "skills": ["Java", "Spring Boot", "MySQL", "Redis", "RAG", "BM25", "向量检索"]
+      },
+      "preferences": {
+        "target_titles": ["后端开发"],
+        "employment_types": ["全职"],
+        "minimum_salary": 25000
+      },
+      "job": {
+        "title": "百度搜索 Go 后端开发（全职）",
+        "company": "百度",
+        "location": "北京",
+        "description": "全职岗位。负责搜索基础服务与 Agent 检索链路，要求掌握 Go 或 C++、Kafka、Linux、分布式并发、MySQL、Redis、BM25 和混合检索。",
+        "salary_min": 28000,
+        "salary_max": 40000,
+        "experience_min": 2,
+        "experience_max": 5,
+        "metadata": {
+          "employment_type": "full_time",
+          "required_skills": ["Go", "C++", "Kafka", "Linux", "分布式并发", "MySQL", "Redis", "BM25", "混合检索"]
+        }
+      },
+      "expected": {
+        "strategy": "冲高",
+        "ability_relation": "岗位略高",
+        "need_score_range": [45, 75],
+        "minimum_rag_citations": 1
+      },
+      "gold_rationale": "RAG 经验相关，但语言栈和大规模后端基础存在缺口；社区证据显示百度可能接受可迁移能力，同时会考察跨栈基础，因此应冲高而非直接不投。"
+    },
+    {
+      "id": "baidu-internship-inference-algorithm-skip",
+      "tags": ["百度", "internship", "algorithm", "hard-negative"],
+      "candidate": {
+        "headline": "入门级大模型应用开发者，主要使用 API、Prompt 和基础 RAG",
+        "years_experience": 0.3,
+        "education": "本科",
+        "skills": ["Python", "Prompt Engineering", "RAG", "向量数据库", "模型API"]
+      },
+      "preferences": {
+        "target_titles": ["大模型推理算法"],
+        "employment_types": ["实习"],
+        "minimum_salary": null,
+        "max_experience_gap": 3
+      },
+      "job": {
+        "title": "百度大模型推理算法实习生",
+        "company": "百度",
+        "location": "北京",
+        "description": "实习岗位。参与大模型推理性能优化，要求熟悉 CUDA、PyTorch 分布式、多 GPU 通信、KV Cache、量化、FlashAttention、C++ 和底层算子分析。",
+        "experience_min": 0,
+        "experience_max": 1,
+        "metadata": {
+          "employment_type": "internship",
+          "required_skills": ["CUDA", "PyTorch", "多GPU通信", "KV Cache", "量化", "FlashAttention", "C++", "底层算子"]
+        }
+      },
+      "expected": {
+        "strategy": "不投",
+        "ability_relation": "差距过大",
+        "need_score_range": [45, 75],
+        "minimum_rag_citations": 1
+      },
+      "gold_rationale": "候选人的 API/RAG 应用经验无法覆盖推理系统、显存通信、量化与底层算子要求；社区面经进一步确认该岗位不是普通模型调用岗，应判能力差距过大。"
+    }
+  ]
+}

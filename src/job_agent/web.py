@@ -56,6 +56,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._json(self.service.dashboard())
             elif path == "/api/jobs":
                 self._json(self.service.jobs())
+            elif path == "/api/recommendations":
+                self._json(self.service.recommendations())
             elif path == "/api/applications":
                 self._json(self.service.applications())
             elif path == "/api/events":
@@ -66,10 +68,19 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._json(self.service.resume_info())
             elif path == "/api/channels":
                 self._json(self.service.channels())
+            elif path == "/api/knowledge/status":
+                self._json(self.service.knowledge_status())
+            elif path == "/api/knowledge/documents":
+                self._json(self.service.knowledge_documents())
+            elif path.startswith("/api/knowledge/jobs/") and path.endswith("/evidence"):
+                parts = path.strip("/").split("/")
+                self._json(self.service.retrieve_job_evidence(int(parts[3]), refresh=False))
             elif path.startswith("/api/"):
                 self._json({"error": "not_found"}, 404)
             else:
                 self._static(path)
+        except (ValueError, KeyError) as exc:
+            self._json({"error": type(exc).__name__, "message": str(exc)}, 400)
         except Exception as exc:
             self._json({"error": type(exc).__name__, "message": str(exc)}, 500)
 
@@ -91,6 +102,15 @@ class ApiHandler(BaseHTTPRequestHandler):
             if path == "/api/resume":
                 result = self.service.replace_resume(str(body["filename"]), str(body["content_base64"]))
                 self._json(result)
+                return
+            if path == "/api/knowledge/documents":
+                self._json(self.service.import_knowledge_document(body))
+                return
+            if path == "/api/knowledge/fetch":
+                self._json(self.service.fetch_knowledge_url(str(body["source"]), str(body["url"])))
+                return
+            if path == "/api/knowledge/retrieve":
+                self._json(self.service.retrieve_job_evidence(int(body["job_id"]), refresh=True))
                 return
             agent = self.service.agent()
             if path == "/api/demo/seed":
@@ -124,6 +144,19 @@ class ApiHandler(BaseHTTPRequestHandler):
                 return
             self._json(result)
         except (ValueError, KeyError, json.JSONDecodeError) as exc:
+            self._json({"error": type(exc).__name__, "message": str(exc)}, 400)
+        except Exception as exc:
+            self._json({"error": type(exc).__name__, "message": str(exc)}, 500)
+
+    def do_DELETE(self) -> None:
+        path = urlparse(self.path).path
+        try:
+            if path.startswith("/api/knowledge/documents/"):
+                document_id = int(path.rstrip("/").rsplit("/", 1)[-1])
+                self._json(self.service.delete_knowledge_document(document_id))
+            else:
+                self._json({"error": "not_found"}, 404)
+        except (ValueError, KeyError) as exc:
             self._json({"error": type(exc).__name__, "message": str(exc)}, 400)
         except Exception as exc:
             self._json({"error": type(exc).__name__, "message": str(exc)}, 500)

@@ -7,8 +7,10 @@ from pathlib import Path
 from job_agent.config import AgentConfig, Preferences
 from job_agent.connectors.registry import ChannelAdapter, ChannelRegistry
 from job_agent.database import Database
+from job_agent.knowledge.models import EvidenceBundle, RetrievedEvidence
 from job_agent.models import Candidate, Job
 from job_agent.orchestrator import JobAgent
+from job_agent.scoring import RuleScoringPort
 
 
 class OrchestratorTests(unittest.TestCase):
@@ -36,6 +38,89 @@ class OrchestratorTests(unittest.TestCase):
             self.assertGreaterEqual(boss_plan["planned"], 1)
             self.assertGreaterEqual(official_plan["planned"], 1)
             self.assertEqual(agent.plan("boss")["planned"], 0)
+
+    def test_evidence_is_retrieved_only_after_hard_filter_and_reaches_scorer(self) -> None:
+        class RecordingEvidenceProvider:
+            def __init__(self) -> None:
+                self.job_ids: list[int] = []
+
+            def retrieve_for_job(self, job: Job, config: AgentConfig) -> EvidenceBundle:
+                self.job_ids.append(job.id or 0)
+                item = RetrievedEvidence(
+                    chunk_id=1, document_id=1, source="nowcoder",
+                    url="https://www.nowcoder.com/discuss/1", title="美团产品岗位体验",
+                    company="美团", role_family="product", employment_type="full_time", business_unit="到店",
+                    published_at=None, topic="duties", text="岗位职责包括需求分析和数据复盘。",
+                    score=0.9, quality_score=0.8, collection_method="manual_import",
+                )
+                return EvidenceBundle(
+                    job_id=job.id or 0, company="美团", role_family="product",
+                    employment_type="full_time", ability=[item],
+                )
+
+        class RecordingScorer:
+            def __init__(self) -> None:
+                self.evidence_by_title: dict[str, EvidenceBundle | None] = {}
+
+            def score(self, job: Job, config: AgentConfig, evidence: EvidenceBundle | None = None):
+                self.evidence_by_title[job.title] = evidence
+                return RuleScoringPort().score(job, config, evidence)
+
+        with tempfile.TemporaryDirectory() as directory:
+            database = Database(Path(directory) / "agent.sqlite3")
+            config = AgentConfig(
+                candidate=Candidate("测试", years_experience=2, education="本科", skills=["需求分析", "SQL"]),
+                preferences=Preferences(
+                    target_titles=["产品经理"], excluded_keywords=["销售"], locations=["北京"],
+                ),
+                greetings={"default": "您好"},
+            )
+            eligible = Job(
+                source="official:meituan", source_id="eligible", title="产品经理", company="美团",
+                location="北京", url="https://zhaopin.meituan.com/job/eligible",
+                description="负责需求分析和SQL数据复盘",
+            )
+            rejected = Job(
+                source="official:meituan", source_id="rejected", title="销售产品经理", company="美团",
+                location="北京", url="https://zhaopin.meituan.com/job/rejected",
+                description="负责销售业务",
+            )
+            eligible.id = database.upsert_job(eligible)[0]
+            rejected.id = database.upsert_job(rejected)[0]
+            provider = RecordingEvidenceProvider()
+            scorer = RecordingScorer()
+            result = JobAgent(
+                config, database, evidence_provider=provider, scorer=scorer,
+            ).evaluate()
+            self.assertEqual(provider.job_ids, [eligible.id])
+            self.assertIsNotNone(scorer.evidence_by_title["产品经理"])
+            self.assertNotIn("销售产品经理", scorer.evidence_by_title)
+            self.assertEqual(result["evidence_jobs"], 1)
+            self.assertEqual(result["evidence_failures"], 0)
+            self.assertEqual(result["scoring_failures"], 0)
+
+    def test_custom_scorer_failure_falls_back_to_rule_result(self) -> None:
+        class FailingScorer:
+            def score(self, job: Job, config: AgentConfig, evidence=None):
+                raise RuntimeError("model unavailable")
+
+        with tempfile.TemporaryDirectory() as directory:
+            database = Database(Path(directory) / "agent.sqlite3")
+            config = AgentConfig(
+                candidate=Candidate("测试", skills=["需求分析"]),
+                preferences=Preferences(target_titles=["产品经理"]),
+                greetings={"default": "您好"},
+            )
+            job = Job(
+                source="official:meituan", source_id="fallback", title="产品经理", company="美团",
+                location="北京", url="https://zhaopin.meituan.com/job/fallback",
+                description="负责需求分析",
+            )
+            database.upsert_job(job)
+            result = JobAgent(config, database, scorer=FailingScorer()).evaluate()
+            self.assertEqual(result["evaluated"], 1)
+            self.assertEqual(result["scoring_failures"], 1)
+            self.assertEqual(result["eligible"], 1)
 
 
 class ChannelSelectionTests(unittest.IsolatedAsyncioTestCase):

@@ -6,6 +6,8 @@ const state = {
   config: null,
   resume: {configured: false, available: false, filename: "", path: "", profile_source: "manual", text_available: false},
   channels: [],
+  knowledgeStatus: {documents: {}, chunks: 0, scopes: []},
+  knowledgeDocuments: [],
   channelDialogMode: "discover",
   taskStep: "resume",
   taskRunning: false
@@ -17,8 +19,21 @@ const STRATEGY_PRESETS = {
   safe: {"冲高": 0.10, "持平": 0.30, "保底": 0.60}
 };
 
+const KNOWLEDGE_ROLE_LABELS = {product: "产品", data: "数据分析", algorithm: "算法", backend: "后端"};
+const KNOWLEDGE_TOPIC_LABELS = {
+  duties: "职责", skills: "技能", interview: "面试", workload: "强度", compensation: "薪酬",
+  culture: "文化", growth: "成长", stability: "稳定性", work_style: "办公方式"
+};
+const KNOWLEDGE_POLICY_LABELS = {accepted: "已入库", needs_review: "待复核", rejected: "已拒绝", duplicate: "重复"};
+
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
+
+const navigationIcons = {recommendations: "spark", overview: "home", jobs: "briefcase", applications: "document", knowledge: "book", config: "settings", audit: "clock"};
+$$('.nav-item').forEach(button => button.insertAdjacentHTML('afterbegin', JobIcons.icon(navigationIcons[button.dataset.view])));
+$("#refresh").insertAdjacentHTML('afterbegin', JobIcons.icon("refresh"));
+$$('.header-actions [data-open-task]').forEach(button => button.insertAdjacentHTML('afterbegin', JobIcons.icon("search")));
+$(".recommendation-search").insertAdjacentHTML('afterbegin', JobIcons.icon("search"));
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -109,18 +124,41 @@ function fallbackChannels(config, dashboard) {
 }
 
 async function load() {
+  const recommendationsReady = refreshRecommendations();
   const [dashboard, jobs, applications, events, config, resume] = await Promise.all([
     api("/api/dashboard"), api("/api/jobs"), api("/api/applications"), api("/api/events"), api("/api/config"), api("/api/resume")
   ]);
+  let knowledgeStatus = dashboard.knowledge || {documents: {}, chunks: 0, scopes: []};
+  let knowledgeDocuments = [];
+  try {
+    [knowledgeStatus, knowledgeDocuments] = await Promise.all([
+      api("/api/knowledge/status"), api("/api/knowledge/documents")
+    ]);
+  } catch (error) {
+    knowledgeStatus = {...knowledgeStatus, error: error.message};
+  }
   let channels = dashboard.channels || [];
   try {
     channels = await api("/api/channels");
   } catch (_) {
     channels = fallbackChannels(config, dashboard);
   }
-  Object.assign(state, {dashboard, jobs, applications, events, config, resume, channels});
+  Object.assign(state, {dashboard, jobs, applications, events, config, resume, channels, knowledgeStatus, knowledgeDocuments});
+  await recommendationsReady;
   render();
   $("#last-refresh").textContent = `更新于 ${new Date().toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"})}`;
+}
+
+let recommendationRequest = 0;
+async function refreshRecommendations() {
+  const request = ++recommendationRequest;
+  Recommendations.setLoading();
+  try {
+    const data = await api("/api/recommendations");
+    if (request === recommendationRequest) Recommendations.setData(data);
+  } catch (error) {
+    if (request === recommendationRequest) Recommendations.setError(error.message);
+  }
 }
 
 function render() {
@@ -129,6 +167,7 @@ function render() {
   renderChannels();
   renderJobs();
   renderApplications();
+  renderKnowledge();
   renderConfig();
   renderEvents();
 }
@@ -218,6 +257,201 @@ function renderApplications() {
   </tr>`).join("") : '<tr><td colspan="6" class="empty">还没有投递计划。先评估岗位并生成计划。</td></tr>';
 }
 
+function knowledgeStatusClass(status) {
+  if (status === "accepted") return "healthy";
+  if (["needs_review", "duplicate"].includes(status)) return "warning";
+  return "neutral";
+}
+
+function knowledgeSourceLabel(source) {
+  return ({nowcoder: "牛客", xiaohongshu: "小红书", manual: "其他公开来源"})[source] || source || "未知来源";
+}
+
+function knowledgeMethodLabel(method) {
+  return ({manual_import: "人工导入", browser_visible: "浏览器可见", public_html: "公开页面"})[method] || method || "未知方式";
+}
+
+function knowledgeEmploymentLabel(value) {
+  return ({full_time: "正职", internship: "实习", unknown: "未确认"})[value] || value || "未确认";
+}
+
+function renderKnowledgeScopeOptions() {
+  const knowledge = state.config?.knowledge || {};
+  const companySelect = $("#knowledge-company");
+  const roleSelect = $("#knowledge-role");
+  const currentCompany = companySelect.value;
+  const currentRole = roleSelect.value;
+  const companies = Object.keys(knowledge.company_aliases || {"腾讯": [], "阿里": [], "美团": [], "快手": [], "百度": []});
+  const roles = Object.keys(knowledge.role_families || KNOWLEDGE_ROLE_LABELS);
+  companySelect.innerHTML = companies.map(company => `<option value="${escapeHtml(company)}">${escapeHtml(company)}</option>`).join("");
+  roleSelect.innerHTML = roles.map(role => `<option value="${escapeHtml(role)}">${escapeHtml(KNOWLEDGE_ROLE_LABELS[role] || role)}</option>`).join("");
+  if (companies.includes(currentCompany)) companySelect.value = currentCompany;
+  if (roles.includes(currentRole)) roleSelect.value = currentRole;
+}
+
+function renderKnowledge() {
+  renderKnowledgeScopeOptions();
+  const status = state.knowledgeStatus || {};
+  const documents = status.documents || {};
+  const accepted = documents.accepted || 0;
+  const pending = (documents.needs_review || 0) + (documents.rejected || 0) + (documents.duplicate || 0);
+  $("#knowledge-state").innerHTML = status.error ? `
+    <div class="knowledge-state-error"><b>暂不可用</b><span>${escapeHtml(status.error)}；岗位池和规则评分仍可使用。</span></div>
+  ` : `
+    <div><b>${accepted}</b><span>可检索帖子</span></div>
+    <div><b>${status.chunks || 0}</b><span>决策证据块</span></div>
+    <div><b>${pending}</b><span>未进入向量库</span></div>
+    <div><b>${status.raw_text_retained ? "保留" : "不保留"}</b><span>整篇原文</span></div>
+  `;
+  const rows = state.knowledgeDocuments || [];
+  $("#knowledge-body").innerHTML = status.error
+    ? `<tr><td colspan="6" class="empty">岗位情报库暂不可用：${escapeHtml(status.error)}。其他求职流程不受影响。</td></tr>`
+    : rows.length ? rows.map(document => {
+    const statusLabel = KNOWLEDGE_POLICY_LABELS[document.policy_status] || document.policy_status;
+    const reasons = (document.policy_reasons || []).join("；") || "已通过确定性准入检查";
+    const topics = (document.topics || []).map(topic => KNOWLEDGE_TOPIC_LABELS[topic] || topic);
+    const url = String(document.source_url || "");
+    const title = /^https:\/\//i.test(url)
+      ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"><strong>${escapeHtml(document.title)}</strong></a>`
+      : `<strong>${escapeHtml(document.title)}</strong>`;
+    const dateValue = document.published_at || document.collected_at;
+    const date = dateValue ? new Date(dateValue).toLocaleDateString("zh-CN") : "未知";
+    return `<tr>
+      <td>${title}<small>${escapeHtml(knowledgeSourceLabel(document.source))} · ${escapeHtml(knowledgeMethodLabel(document.collection_method))}</small></td>
+      <td><strong>${escapeHtml(document.company || "未识别")} · ${escapeHtml(knowledgeEmploymentLabel(document.employment_type))}</strong><small>${escapeHtml(KNOWLEDGE_ROLE_LABELS[document.role_family] || document.role_family || "未识别")}${document.business_unit ? ` · ${escapeHtml(document.business_unit)}` : ""}</small></td>
+      <td><span class="status-dot ${knowledgeStatusClass(document.policy_status)}">${escapeHtml(statusLabel)}</span><small title="${escapeHtml(reasons)}">${escapeHtml(reasons)}</small></td>
+      <td>${topics.length ? topics.map(topic => `<span class="chip">${escapeHtml(topic)}</span>`).join(" ") : "—"}<small>${document.chunk_count || 0} 个证据块</small></td>
+      <td>${escapeHtml(date)}<small>${document.published_at ? "发布" : "采集"}</small></td>
+      <td><button class="button ghost small table-action" type="button" data-delete-knowledge="${document.id}">删除</button></td>
+    </tr>`;
+  }).join("") : '<tr><td colspan="6" class="empty">还没有帖子。先导入一篇能影响岗位判断的真实经历。</td></tr>';
+  $$('[data-delete-knowledge]').forEach(button => button.onclick = () => deleteKnowledgeDocument(Number(button.dataset.deleteKnowledge)));
+}
+
+async function refreshKnowledge() {
+  const [knowledgeStatus, knowledgeDocuments] = await Promise.all([
+    api("/api/knowledge/status"), api("/api/knowledge/documents")
+  ]);
+  Object.assign(state, {knowledgeStatus, knowledgeDocuments});
+  renderKnowledge();
+  await refreshRecommendations();
+}
+
+async function importKnowledge(event) {
+  event.preventDefault();
+  const button = $("#knowledge-import");
+  const resultBox = $("#knowledge-import-result");
+  const content = $("#knowledge-content").value.trim();
+  if (content.length < 120) {
+    resultBox.textContent = "正文至少需要 120 字。";
+    $("#knowledge-content").focus();
+    return;
+  }
+  const payload = {
+    source: $("#knowledge-source").value,
+    collection_method: $("#knowledge-method").value,
+    company: $("#knowledge-company").value,
+    role_family: $("#knowledge-role").value,
+    employment_type: $("#knowledge-employment-type").value,
+    url: $("#knowledge-url").value.trim(),
+    title: $("#knowledge-title").value.trim(),
+    published_at: $("#knowledge-published").value || null,
+    business_unit: $("#knowledge-unit").value.trim(),
+    city: $("#knowledge-city").value.trim(),
+    seniority: $("#knowledge-seniority").value.trim(),
+    content,
+    approve_review: $("#knowledge-approve-review").checked
+  };
+  button.disabled = true;
+  button.textContent = "正在检查…";
+  resultBox.textContent = "";
+  try {
+    const result = await api("/api/knowledge/documents", {method: "POST", body: JSON.stringify(payload)});
+    const label = KNOWLEDGE_POLICY_LABELS[result.status] || result.status;
+    const reason = (result.reasons || []).join("；");
+    resultBox.textContent = `${label} · ${result.chunks || 0} 个证据块${reason ? ` · ${reason}` : ""}`;
+    toast(result.status === "accepted" ? "帖子已进入岗位情报库" : `准入结果：${label}`, result.status === "rejected");
+    if (["accepted", "duplicate"].includes(result.status)) {
+      $("#knowledge-url").value = "";
+      $("#knowledge-title").value = "";
+      $("#knowledge-published").value = "";
+      $("#knowledge-unit").value = "";
+      $("#knowledge-city").value = "";
+      $("#knowledge-seniority").value = "";
+      $("#knowledge-content").value = "";
+      $("#knowledge-approve-review").checked = false;
+      updateKnowledgeContentCount();
+    }
+    await refreshKnowledge();
+  } catch (error) {
+    resultBox.textContent = error.message;
+    toast(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "检查并导入";
+  }
+}
+
+async function fetchKnowledge(event) {
+  event.preventDefault();
+  const button = $("#knowledge-fetch");
+  const resultBox = $("#knowledge-fetch-result");
+  button.disabled = true;
+  button.textContent = "正在读取…";
+  try {
+    const result = await api("/api/knowledge/fetch", {
+      method: "POST",
+      body: JSON.stringify({source: $("#knowledge-fetch-source").value, url: $("#knowledge-fetch-url").value.trim()})
+    });
+    const imported = result.import;
+    resultBox.textContent = imported
+      ? `${result.message} 准入结果：${KNOWLEDGE_POLICY_LABELS[imported.status] || imported.status}，${imported.chunks || 0} 个证据块。`
+      : result.message;
+    toast(imported?.status === "accepted" ? "公开页面已解析并入库" : result.message, ["access_limited", "portal_unparsed"].includes(result.status));
+    await refreshKnowledge();
+  } catch (error) {
+    resultBox.textContent = `${error.message} 请确认这是单篇公开页面，或改用人工导入。`;
+    toast(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "读取这一个页面";
+  }
+}
+
+async function deleteKnowledgeDocument(documentId) {
+  if (!window.confirm("删除这篇帖子及其证据块？该操作只影响本地岗位情报库。")) return;
+  try {
+    await api(`/api/knowledge/documents/${documentId}`, {method: "DELETE"});
+    await refreshKnowledge();
+    toast("帖子及其证据块已从本机删除");
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+function updateKnowledgeContentCount() {
+  $("#knowledge-content-count").textContent = `${$("#knowledge-content").value.length.toLocaleString("zh-CN")} / 20,000 字`;
+}
+
+function syncKnowledgeSource() {
+  const source = $("#knowledge-source").value;
+  if (source === "xiaohongshu") $("#knowledge-method").value = "browser_visible";
+  if (source === "nowcoder" && $("#knowledge-method").value === "browser_visible") $("#knowledge-method").value = "manual_import";
+  $("#knowledge-url").placeholder = source === "xiaohongshu"
+    ? "https://www.xiaohongshu.com/explore/..."
+    : source === "nowcoder" ? "https://www.nowcoder.com/discuss/..." : "https://...";
+}
+
+function syncKnowledgeFetchGuidance() {
+  const isXhs = $("#knowledge-fetch-source").value === "xiaohongshu";
+  $("#knowledge-fetch-url").placeholder = isXhs
+    ? "https://www.xiaohongshu.com/explore/..."
+    : "https://www.nowcoder.com/discuss/...";
+  $("#knowledge-fetch-result").textContent = isXhs
+    ? "小红书不会直接抓取；提交链接后只会返回登录后可见正文的安全导入说明。"
+    : "牛客仅解析你提供的单篇公开讨论页，每次至少间隔 5 秒，不搜索、不翻页、不重试。";
+}
+
 function setValue(id, value) {
   const element = $(`#${id}`);
   if (element) element.value = value ?? "";
@@ -271,6 +505,12 @@ function renderConfig() {
   setValue("cfg-blacklisted", listText(preferences.blacklisted_companies));
   setCheckedValues("cfg-employment", preferences.employment_types);
   setCheckedValues("cfg-work-mode", preferences.work_modes);
+  setValue("cfg-workload-preference", preferences.workload_preference || "balanced");
+  setValue("cfg-role-boundary-preference", preferences.role_boundary_preference || "no_preference");
+  setValue("cfg-growth-priority", preferences.growth_priority || "medium");
+  setValue("cfg-stability-priority", preferences.stability_priority || "medium");
+  setValue("cfg-culture-preferences", listText(preferences.culture_preferences));
+  setValue("cfg-community-risk-avoidances", listText(preferences.community_risk_avoidances));
   setValue("cfg-min-salary", preferences.minimum_salary);
   setValue("cfg-max-gap", preferences.max_experience_gap ?? 2);
   setValue("cfg-recent-days", preferences.published_within_days);
@@ -312,10 +552,20 @@ function renderEvents() {
 }
 
 function switchView(view) {
-  const titles = {overview: "求职工作台", jobs: "岗位池", applications: "投递台账", config: "配置", audit: "审计日志"};
-  $$(".nav-item").forEach(item => item.classList.toggle("active", item.dataset.view === view));
+  const focusedView = document.activeElement?.closest(".view");
+  const restorePageFocus = focusedView && focusedView.id !== `view-${view}`;
+  const titles = {recommendations: "智能推荐", overview: "求职工作台", jobs: "岗位池", applications: "投递台账", knowledge: "岗位情报库", config: "配置", audit: "审计日志"};
+  $$(".nav-item").forEach(item => {
+    item.classList.toggle("active", item.dataset.view === view);
+    if (item.dataset.view === view) item.setAttribute("aria-current", "page");
+    else item.removeAttribute("aria-current");
+  });
   $$(".view").forEach(item => item.classList.toggle("active", item.id === `view-${view}`));
   $("#page-title").textContent = titles[view] || "求职工作台";
+  $("#page-description").textContent = view === "recommendations"
+    ? "看清值得投的理由，也看清要先确认的风险。"
+    : "在本机筛选岗位，保留每一步决策依据。";
+  if (restorePageFocus) $("#page-title").focus({preventScroll: true});
 }
 
 function bindGoConfig() {
@@ -407,6 +657,12 @@ function renderTaskDefaults() {
   setValue("task-blacklisted", listText(preferences.blacklisted_companies));
   setCheckedValues("task-employment", preferences.employment_types);
   setCheckedValues("task-work-mode", preferences.work_modes);
+  setValue("task-workload-preference", preferences.workload_preference || "balanced");
+  setValue("task-role-boundary-preference", preferences.role_boundary_preference || "no_preference");
+  setValue("task-growth-priority", preferences.growth_priority || "medium");
+  setValue("task-stability-priority", preferences.stability_priority || "medium");
+  setValue("task-culture-preferences", listText(preferences.culture_preferences));
+  setValue("task-community-risk-avoidances", listText(preferences.community_risk_avoidances));
   setValue("task-min-salary", preferences.minimum_salary);
   setValue("task-max-gap", preferences.max_experience_gap ?? 2);
   setValue("task-recent-days", preferences.published_within_days);
@@ -476,6 +732,12 @@ function taskConfigPayload() {
   config.preferences.blacklisted_companies = parseList($("#task-blacklisted").value);
   config.preferences.employment_types = selectedValues("task-employment");
   config.preferences.work_modes = selectedValues("task-work-mode");
+  config.preferences.workload_preference = $("#task-workload-preference").value;
+  config.preferences.role_boundary_preference = $("#task-role-boundary-preference").value;
+  config.preferences.growth_priority = $("#task-growth-priority").value;
+  config.preferences.stability_priority = $("#task-stability-priority").value;
+  config.preferences.culture_preferences = parseList($("#task-culture-preferences").value);
+  config.preferences.community_risk_avoidances = parseList($("#task-community-risk-avoidances").value);
   config.preferences.minimum_salary = optionalNumber($("#task-min-salary").value);
   config.preferences.max_experience_gap = Number($("#task-max-gap").value || 2);
   config.preferences.published_within_days = optionalNumber($("#task-recent-days").value);
@@ -531,7 +793,7 @@ async function startTask() {
     $("#task-loading-message").textContent = `完成：新增 ${discovery.sources?.reduce((sum, item) => sum + (item.created || 0), 0) || 0} 个岗位，评估 ${evaluation.evaluated || 0} 个。`;
     await load();
     $("#task-dialog").close();
-    switchView("jobs");
+    switchView("recommendations");
     renderRunResult(discovery);
     toast(discovery.completed > 0 ? "岗位已获取并完成评估" : discovery.message, discovery.completed === 0);
   } catch (error) {
@@ -618,6 +880,12 @@ async function saveBasicConfig() {
     config.preferences.blacklisted_companies = parseList($("#cfg-blacklisted").value);
     config.preferences.employment_types = selectedValues("cfg-employment");
     config.preferences.work_modes = selectedValues("cfg-work-mode");
+    config.preferences.workload_preference = $("#cfg-workload-preference").value;
+    config.preferences.role_boundary_preference = $("#cfg-role-boundary-preference").value;
+    config.preferences.growth_priority = $("#cfg-growth-priority").value;
+    config.preferences.stability_priority = $("#cfg-stability-priority").value;
+    config.preferences.culture_preferences = parseList($("#cfg-culture-preferences").value);
+    config.preferences.community_risk_avoidances = parseList($("#cfg-community-risk-avoidances").value);
     config.preferences.minimum_salary = optionalNumber($("#cfg-min-salary").value);
     config.preferences.max_experience_gap = Number($("#cfg-max-gap").value || 2);
     config.preferences.published_within_days = optionalNumber($("#cfg-recent-days").value);
@@ -739,7 +1007,6 @@ $("#confirm-dialog").addEventListener("close", () => {
   else if ($("#confirm-dialog").returnValue === "confirm") toast("确认文字不正确", true);
 });
 $("#refresh").addEventListener("click", () => load().catch(error => toast(error.message, true)));
-$("#run-cycle").addEventListener("click", openTaskDialog);
 $$('[data-open-task]').forEach(button => button.addEventListener("click", openTaskDialog));
 $("#task-next").addEventListener("click", async () => {
   const button = $("#task-next");
@@ -820,6 +1087,19 @@ $("#open-advanced-channel").addEventListener("click", () => {
   $("#advanced-config").open = true;
   $("#advanced-config").scrollIntoView({behavior: "smooth", block: "start"});
 });
+$("#knowledge-import-form").addEventListener("submit", importKnowledge);
+$("#knowledge-fetch-form").addEventListener("submit", fetchKnowledge);
+$("#knowledge-refresh").addEventListener("click", () => refreshKnowledge().catch(error => toast(error.message, true)));
+$("#knowledge-content").addEventListener("input", updateKnowledgeContentCount);
+$("#knowledge-source").addEventListener("change", syncKnowledgeSource);
+$("#knowledge-fetch-source").addEventListener("change", syncKnowledgeFetchGuidance);
 
 bindGoConfig();
+Recommendations.bind({
+  retry: refreshRecommendations,
+  goToPool: () => switchView("jobs"),
+  openTask: openTaskDialog
+});
+syncKnowledgeSource();
+syncKnowledgeFetchGuidance();
 load().catch(error => toast(error.message, true));

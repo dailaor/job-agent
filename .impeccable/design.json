@@ -1,0 +1,455 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-12T04:08:19Z",
+  "title": "Design System: 职来 Agent",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "墨绿黑",
+        "tonalRamp": [
+          "oklch(15.00% 0.0266 183.78)",
+          "oklch(26.43% 0.0266 183.78)",
+          "oklch(37.86% 0.0266 183.78)",
+          "oklch(49.29% 0.0266 183.78)",
+          "oklch(60.71% 0.0266 183.78)",
+          "oklch(72.14% 0.0266 183.78)",
+          "oklch(83.57% 0.0266 183.78)",
+          "oklch(95.00% 0.0266 183.78)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "辅助灰绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0206 174.73)",
+          "oklch(26.43% 0.0206 174.73)",
+          "oklch(37.86% 0.0206 174.73)",
+          "oklch(49.29% 0.0206 174.73)",
+          "oklch(60.71% 0.0206 174.73)",
+          "oklch(72.14% 0.0206 174.73)",
+          "oklch(83.57% 0.0206 174.73)",
+          "oklch(95.00% 0.0206 174.73)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "分隔浅灰绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0092 161.34)",
+          "oklch(26.43% 0.0092 161.34)",
+          "oklch(37.86% 0.0092 161.34)",
+          "oklch(49.29% 0.0092 161.34)",
+          "oklch(60.71% 0.0092 161.34)",
+          "oklch(72.14% 0.0092 161.34)",
+          "oklch(83.57% 0.0092 161.34)",
+          "oklch(95.00% 0.0092 161.34)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "暖白背景",
+        "tonalRamp": [
+          "oklch(15.00% 0.0034 145.55)",
+          "oklch(26.43% 0.0034 145.55)",
+          "oklch(37.86% 0.0034 145.55)",
+          "oklch(49.29% 0.0034 145.55)",
+          "oklch(60.71% 0.0034 145.55)",
+          "oklch(72.14% 0.0034 145.55)",
+          "oklch(83.57% 0.0034 145.55)",
+          "oklch(95.00% 0.0034 145.55)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "白色卡面",
+        "tonalRamp": [
+          "oklch(15.00% 0.0000 0.00)",
+          "oklch(26.43% 0.0000 0.00)",
+          "oklch(37.86% 0.0000 0.00)",
+          "oklch(49.29% 0.0000 0.00)",
+          "oklch(60.71% 0.0000 0.00)",
+          "oklch(72.14% 0.0000 0.00)",
+          "oklch(83.57% 0.0000 0.00)",
+          "oklch(95.00% 0.0000 0.00)"
+        ]
+      },
+      "green": {
+        "role": "primary",
+        "displayName": "森林绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0724 171.16)",
+          "oklch(26.43% 0.0724 171.16)",
+          "oklch(37.86% 0.0724 171.16)",
+          "oklch(49.29% 0.0724 171.16)",
+          "oklch(60.71% 0.0724 171.16)",
+          "oklch(72.14% 0.0724 171.16)",
+          "oklch(83.57% 0.0724 171.16)",
+          "oklch(95.00% 0.0724 171.16)"
+        ]
+      },
+      "green-2": {
+        "role": "primary",
+        "displayName": "焦点中绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0895 166.01)",
+          "oklch(26.43% 0.0895 166.01)",
+          "oklch(37.86% 0.0895 166.01)",
+          "oklch(49.29% 0.0895 166.01)",
+          "oklch(60.71% 0.0895 166.01)",
+          "oklch(72.14% 0.0895 166.01)",
+          "oklch(83.57% 0.0895 166.01)",
+          "oklch(95.00% 0.0895 166.01)"
+        ]
+      },
+      "orange": {
+        "role": "tertiary",
+        "displayName": "辅助橙",
+        "tonalRamp": [
+          "oklch(15.00% 0.1238 61.99)",
+          "oklch(26.43% 0.1238 61.99)",
+          "oklch(37.86% 0.1238 61.99)",
+          "oklch(49.29% 0.1238 61.99)",
+          "oklch(60.71% 0.1238 61.99)",
+          "oklch(72.14% 0.1238 61.99)",
+          "oklch(83.57% 0.1238 61.99)",
+          "oklch(95.00% 0.1238 61.99)"
+        ]
+      },
+      "red": {
+        "role": "tertiary",
+        "displayName": "错误红",
+        "tonalRamp": [
+          "oklch(15.00% 0.1283 31.61)",
+          "oklch(26.43% 0.1283 31.61)",
+          "oklch(37.86% 0.1283 31.61)",
+          "oklch(49.29% 0.1283 31.61)",
+          "oklch(60.71% 0.1283 31.61)",
+          "oklch(72.14% 0.1283 31.61)",
+          "oklch(83.57% 0.1283 31.61)",
+          "oklch(95.00% 0.1283 31.61)"
+        ]
+      },
+      "blue": {
+        "role": "tertiary",
+        "displayName": "辅助蓝",
+        "tonalRamp": [
+          "oklch(15.00% 0.0672 238.85)",
+          "oklch(26.43% 0.0672 238.85)",
+          "oklch(37.86% 0.0672 238.85)",
+          "oklch(49.29% 0.0672 238.85)",
+          "oklch(60.71% 0.0672 238.85)",
+          "oklch(72.14% 0.0672 238.85)",
+          "oklch(83.57% 0.0672 238.85)",
+          "oklch(95.00% 0.0672 238.85)"
+        ]
+      },
+      "nav-background": {
+        "role": "neutral",
+        "displayName": "导航浅灰绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0075 164.94)",
+          "oklch(26.43% 0.0075 164.94)",
+          "oklch(37.86% 0.0075 164.94)",
+          "oklch(49.29% 0.0075 164.94)",
+          "oklch(60.71% 0.0075 164.94)",
+          "oklch(72.14% 0.0075 164.94)",
+          "oklch(83.57% 0.0075 164.94)",
+          "oklch(95.00% 0.0075 164.94)"
+        ]
+      },
+      "nav-active": {
+        "role": "secondary",
+        "displayName": "导航薄荷",
+        "tonalRamp": [
+          "oklch(15.00% 0.0234 165.84)",
+          "oklch(26.43% 0.0234 165.84)",
+          "oklch(37.86% 0.0234 165.84)",
+          "oklch(49.29% 0.0234 165.84)",
+          "oklch(60.71% 0.0234 165.84)",
+          "oklch(72.14% 0.0234 165.84)",
+          "oklch(83.57% 0.0234 165.84)",
+          "oklch(95.00% 0.0234 165.84)"
+        ]
+      },
+      "nav-text": {
+        "role": "neutral",
+        "displayName": "导航文字",
+        "tonalRamp": [
+          "oklch(15.00% 0.0313 167.64)",
+          "oklch(26.43% 0.0313 167.64)",
+          "oklch(37.86% 0.0313 167.64)",
+          "oklch(49.29% 0.0313 167.64)",
+          "oklch(60.71% 0.0313 167.64)",
+          "oklch(72.14% 0.0313 167.64)",
+          "oklch(83.57% 0.0313 167.64)",
+          "oklch(95.00% 0.0313 167.64)"
+        ]
+      },
+      "readout-mint": {
+        "role": "secondary",
+        "displayName": "薄荷读数底",
+        "tonalRamp": [
+          "oklch(15.00% 0.0116 162.05)",
+          "oklch(26.43% 0.0116 162.05)",
+          "oklch(37.86% 0.0116 162.05)",
+          "oklch(49.29% 0.0116 162.05)",
+          "oklch(60.71% 0.0116 162.05)",
+          "oklch(72.14% 0.0116 162.05)",
+          "oklch(83.57% 0.0116 162.05)",
+          "oklch(95.00% 0.0116 162.05)"
+        ]
+      },
+      "readout-amber": {
+        "role": "secondary",
+        "displayName": "琥珀读数底",
+        "tonalRamp": [
+          "oklch(15.00% 0.0143 84.58)",
+          "oklch(26.43% 0.0143 84.58)",
+          "oklch(37.86% 0.0143 84.58)",
+          "oklch(49.29% 0.0143 84.58)",
+          "oklch(60.71% 0.0143 84.58)",
+          "oklch(72.14% 0.0143 84.58)",
+          "oklch(83.57% 0.0143 84.58)",
+          "oklch(95.00% 0.0143 84.58)"
+        ]
+      },
+      "positive-background": {
+        "role": "secondary",
+        "displayName": "可了解标签底",
+        "tonalRamp": [
+          "oklch(15.00% 0.0249 164.44)",
+          "oklch(26.43% 0.0249 164.44)",
+          "oklch(37.86% 0.0249 164.44)",
+          "oklch(49.29% 0.0249 164.44)",
+          "oklch(60.71% 0.0249 164.44)",
+          "oklch(72.14% 0.0249 164.44)",
+          "oklch(83.57% 0.0249 164.44)",
+          "oklch(95.00% 0.0249 164.44)"
+        ]
+      },
+      "positive-text": {
+        "role": "primary",
+        "displayName": "可了解标签字",
+        "tonalRamp": [
+          "oklch(15.00% 0.0830 166.19)",
+          "oklch(26.43% 0.0830 166.19)",
+          "oklch(37.86% 0.0830 166.19)",
+          "oklch(49.29% 0.0830 166.19)",
+          "oklch(60.71% 0.0830 166.19)",
+          "oklch(72.14% 0.0830 166.19)",
+          "oklch(83.57% 0.0830 166.19)",
+          "oklch(95.00% 0.0830 166.19)"
+        ]
+      },
+      "caution-background": {
+        "role": "secondary",
+        "displayName": "待核实标签底",
+        "tonalRamp": [
+          "oklch(15.00% 0.0401 83.13)",
+          "oklch(26.43% 0.0401 83.13)",
+          "oklch(37.86% 0.0401 83.13)",
+          "oklch(49.29% 0.0401 83.13)",
+          "oklch(60.71% 0.0401 83.13)",
+          "oklch(72.14% 0.0401 83.13)",
+          "oklch(83.57% 0.0401 83.13)",
+          "oklch(95.00% 0.0401 83.13)"
+        ]
+      },
+      "caution-text": {
+        "role": "tertiary",
+        "displayName": "待核实标签字",
+        "tonalRamp": [
+          "oklch(15.00% 0.1012 67.99)",
+          "oklch(26.43% 0.1012 67.99)",
+          "oklch(37.86% 0.1012 67.99)",
+          "oklch(49.29% 0.1012 67.99)",
+          "oklch(60.71% 0.1012 67.99)",
+          "oklch(72.14% 0.1012 67.99)",
+          "oklch(83.57% 0.1012 67.99)",
+          "oklch(95.00% 0.1012 67.99)"
+        ]
+      },
+      "work-card-line": {
+        "role": "neutral",
+        "displayName": "工作卡边框",
+        "tonalRamp": [
+          "oklch(15.00% 0.0117 153.66)",
+          "oklch(26.43% 0.0117 153.66)",
+          "oklch(37.86% 0.0117 153.66)",
+          "oklch(49.29% 0.0117 153.66)",
+          "oklch(60.71% 0.0117 153.66)",
+          "oklch(72.14% 0.0117 153.66)",
+          "oklch(83.57% 0.0117 153.66)",
+          "oklch(95.00% 0.0117 153.66)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "页面标题",
+        "purpose": "页面 h1；移动字号 26px。"
+      },
+      "title": {
+        "displayName": "岗位标题",
+        "purpose": "22px 岗位名称；移动字号 18px。"
+      },
+      "body": {
+        "displayName": "理由与风险",
+        "purpose": "推荐卡事实正文，移动字号 12px。"
+      },
+      "experience": {
+        "displayName": "体验摘要",
+        "purpose": "六组体验，已知 500／未知 400。"
+      },
+      "label": {
+        "displayName": "标签",
+        "purpose": "体验名称和短状态。"
+      },
+      "action": {
+        "displayName": "动作",
+        "purpose": "标准按钮文字。"
+      },
+      "caption": {
+        "displayName": "出处提示",
+        "purpose": "来源摘要和辅助说明。"
+      },
+      "body-base": {
+        "displayName": "基础文字",
+        "purpose": "全局基础字体与字号。"
+      },
+      "mono": {
+        "displayName": "配置代码",
+        "purpose": "保留的 JSON 编辑器。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "toast",
+        "value": "0 5px 20px rgb(23 48 36 / 5%)",
+        "purpose": "提示消息；工作区容器不使用。"
+      },
+      {
+        "name": "dialog",
+        "value": "0 30px 80px rgba(20, 35, 27, .28)",
+        "purpose": "保留的模态对话框。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "160ms ease",
+        "purpose": "按钮颜色与证据展开箭头。"
+      },
+      {
+        "name": "reduced-motion-duration",
+        "value": ".01ms",
+        "purpose": "沿用减少动态偏好的覆盖时长。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "workspace-compact",
+        "value": "1180px"
+      },
+      {
+        "name": "existing-layout-single-column",
+        "value": "1120px"
+      },
+      {
+        "name": "mobile",
+        "value": "720px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "森林绿 CTA，图标与文字并排；悬停只改变颜色。",
+      "html": "<button class=\"ds-primary\" type=\"button\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\"/><path d=\"m16 16 5 5\"/></svg>寻找匹配岗位</button>",
+      "css": ".ds-icon{display:inline-block;width:20px;height:20px;flex:none;vertical-align:middle;}.ds-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:41px;padding:10px 14px;border:1px solid var(--line, #e2e9e5);border-radius:8px;background:var(--card, #ffffff);color:var(--ink, #172b28);font-family:\"Segoe UI Variable Text\", \"Microsoft YaHei UI\", Aptos, sans-serif;font-size:13px;font-weight:650;cursor:pointer;text-decoration:none;transition:background 160ms ease,border-color 160ms ease;background:var(--green, #1b5d4b);border-color:var(--green, #1b5d4b);color:#fff;}.ds-primary .ds-icon{width:17px;height:17px;}.ds-primary:hover{background:#174d3e;border-color:#174d3e;}.ds-primary:focus-visible{outline:2px solid var(--green-2, #26765a);outline-offset:3px;}.ds-primary:disabled{cursor:not-allowed;opacity:.45;}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-secondary,.ds-work-action,.ds-evidence-chevron{transition-duration:.01ms;}}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "白底细边框的次动作，匹配现有 ghost。",
+      "html": "<button class=\"ds-secondary\" type=\"button\">刷新</button>",
+      "css": ".ds-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:41px;padding:10px 14px;border:1px solid var(--line, #e2e9e5);border-radius:8px;background:var(--card, #ffffff);color:var(--ink, #172b28);font-family:\"Segoe UI Variable Text\", \"Microsoft YaHei UI\", Aptos, sans-serif;font-size:13px;font-weight:650;cursor:pointer;text-decoration:none;transition:background 160ms ease,border-color 160ms ease;}.ds-secondary:hover{background:#f0f5f1;border-color:#bfd2c5;}.ds-secondary:focus-visible{outline:2px solid var(--green-2, #26765a);outline-offset:3px;}.ds-secondary:disabled{cursor:not-allowed;opacity:.45;}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-secondary,.ds-work-action,.ds-evidence-chevron{transition-duration:.01ms;}}"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "本地图标、语义搜索框与隐藏但可访问的标签。",
+      "html": "<label class=\"ds-search-label\"><span class=\"ds-sr-only\">搜索推荐</span><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\"/><path d=\"m16 16 5 5\"/></svg><input class=\"ds-search\" type=\"search\" placeholder=\"岗位、公司或地点\" autocomplete=\"off\"></label>",
+      "css": ".ds-icon{display:inline-block;width:20px;height:20px;flex:none;vertical-align:middle;}.ds-search-label{position:relative;display:grid;max-width:410px;min-width:220px;color:var(--muted, #64746f);font-family:\"Segoe UI Variable Text\", \"Microsoft YaHei UI\", Aptos, sans-serif;font-size:12px;}.ds-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}.ds-search-label>.ds-icon{position:absolute;top:11px;left:14px;color:#53675e;width:18px;height:18px;pointer-events:none;}.ds-search{width:100%;height:42px;padding:10px 14px 10px 42px;border:1px solid #dce6df;border-radius:8px;background:var(--card, #ffffff);color:var(--ink, #172b28);font:inherit;caret-color:var(--green, #1b5d4b);}.ds-search::placeholder{color:#6b786f;opacity:1;}.ds-search:focus-visible{outline:2px solid var(--green-2, #26765a);outline-offset:3px;}"
+    },
+    {
+      "name": "Workspace Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-item",
+      "description": "浅导航、线性图标、薄荷当前项与文字状态。",
+      "html": "<nav class=\"ds-nav\" aria-label=\"工作台导航\"><button class=\"ds-nav-item ds-nav-active\" type=\"button\" aria-current=\"page\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z\"/></svg>智能推荐</button><button class=\"ds-nav-item\" type=\"button\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><rect x=\"3\" y=\"7\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M8 7V3h8v4M3 12a24 24 0 0 0 18 0M10 12v3h4v-3\"/></svg>岗位池</button></nav>",
+      "css": ".ds-icon{display:inline-block;width:20px;height:20px;flex:none;vertical-align:middle;}.ds-nav{display:grid;gap:8px;padding:27px 16px;background:#f1f7f4;border-right:1px solid var(--line, #e2e9e5);font-family:\"Segoe UI Variable Text\", \"Microsoft YaHei UI\", Aptos, sans-serif;font-size:14px;}.ds-nav-item{display:flex;align-items:center;gap:14px;min-height:50px;padding:13px 16px;border:0;border-radius:9px;background:transparent;color:#374d44;font:inherit;text-align:left;cursor:pointer;}.ds-nav-item .ds-icon{width:21px;height:21px;}.ds-nav-item:hover{background:#e7f0eb;color:#164d40;}.ds-nav-active{background:#dcefe6;color:#164d40;font-weight:700;}.ds-nav-item:focus-visible{outline:2px solid var(--green-2, #26765a);outline-offset:3px;}@media(max-width:720px){.ds-nav{display:flex;gap:6px;padding:16px 14px 10px;overflow:auto;border-right:0;border-bottom:1px solid var(--line, #e2e9e5);}.ds-nav-item{min-width:max-content;min-height:38px;padding:8px 11px;gap:6px;font-size:12px;}.ds-nav-item .ds-icon{width:16px;height:16px;}}"
+    },
+    {
+      "name": "Decision Status",
+      "kind": "chip",
+      "refersTo": "status-positive",
+      "description": "状态始终带文字，薄荷与琥珀各表达下一步。",
+      "html": "<span class=\"ds-status ds-positive\">优先了解</span> <span class=\"ds-status ds-caution\">核实后再投</span>",
+      "css": ".ds-status{display:inline-block;padding:5px 10px;border-radius:999px;font-family:\"Segoe UI Variable Text\", \"Microsoft YaHei UI\", Aptos, sans-serif;font-size:12px;font-weight:650;line-height:1.5;white-space:nowrap;}.ds-positive{background:#dff3e9;color:#19644b;}.ds-caution{background:#fff0d4;color:#8a5816;}"
+    },
+    {
+      "name": "Recommendation Work Card",
+      "kind": "card",
+      "refersTo": "work-card",
+      "description": "推荐页单列横向卡的结构预览；长内容自然增高，窄屏完整重排。",
+      "html": "<article class=\"ds-work-card\"><div class=\"ds-work-heading\"><div class=\"ds-work-identity\"><span class=\"ds-company\" aria-hidden=\"true\">岗</span><div><h3>岗位名称</h3><p>公司 · 地点</p></div></div><div class=\"ds-work-actions\"><span class=\"ds-work-status\">先核实信息</span><a class=\"ds-work-action\" href=\"#original-job\">查看原岗位<svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M14 3h7v7M21 3l-9 9M10 3H3v18h18v-7\"/></svg></a></div></div><div class=\"ds-work-source\">来源待核实 · 证据待补充</div><div class=\"ds-readouts\"><div><dl><dt>薪资待遇</dt><dd>未披露</dd></dl></div><div><dl><dt>可投性</dt><dd>门槛待核实</dd></dl></div><div><dl><dt>能力匹配</dt><dd>依据不足</dd></dl></div><div class=\"ds-qualification\"><p>提交资格仍需核实</p></div></div><div class=\"ds-work-body\"><div class=\"ds-work-arguments\"><section><h4>值得了解的理由</h4><p>暂无足够依据。</p></section><section><h4>风险与待确认</h4><p>薪资与工作安排待核实。</p></section></div><section class=\"ds-work-experience\"><h4>工作体验</h4><dl><div><dt>时间负担</dt><dd>待核实</dd></div><div><dt>工作节奏</dt><dd>待核实</dd></div><div><dt>职责质量</dt><dd>待核实</dd></div><div><dt>管理文化</dt><dd>待核实</dd></div><div><dt>成长性</dt><dd>待核实</dd></div><div><dt>稳定性</dt><dd>待核实</dd></div></dl></section></div><details class=\"ds-work-details\"><summary>待遇细项与决策依据 <span>0 条来源记录</span></summary><p>暂无可回查证据，请先打开原岗位核对。</p></details><footer class=\"ds-work-footer\">先确认未知信息，再决定是否投递</footer></article>",
+      "css": ".ds-icon{display:inline-block;width:20px;height:20px;flex:none;vertical-align:middle;}.ds-work-card{padding:21px 22px 0;border:1px solid #e1e9e3;border-radius:14px;background:var(--card, #ffffff);color:var(--ink, #172b28);font-family:\"Segoe UI Variable Text\", \"Microsoft YaHei UI\", Aptos, sans-serif;font-size:14px;}.ds-work-heading{display:flex;justify-content:space-between;align-items:center;gap:18px;}.ds-work-identity{display:flex;gap:16px;align-items:center;min-width:0;flex:1;}.ds-work-identity>div{min-width:0;}.ds-company{width:48px;height:48px;flex:none;display:grid;place-items:center;border-radius:50%;background:#f9ebd0;color:#8b601f;font-size:25px;font-weight:700;}.ds-work-heading h3{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.4;overflow-wrap:anywhere;}.ds-work-heading p{margin:6px 0 0;font-size:12px;line-height:1.5;color:#5e7367;}.ds-work-actions{display:flex;align-items:center;gap:17px;flex:none;}.ds-work-status{padding:5px 10px;border-radius:999px;font-size:12px;font-weight:650;white-space:nowrap;background:#fff0d4;color:#8a5816;}.ds-work-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:41px;padding:10px 14px;border:1px solid var(--line, #e2e9e5);border-radius:8px;background:var(--card, #ffffff);color:var(--ink, #172b28);font-family:\"Segoe UI Variable Text\", \"Microsoft YaHei UI\", Aptos, sans-serif;font-size:13px;font-weight:650;cursor:pointer;text-decoration:none;transition:background 160ms ease,border-color 160ms ease;min-height:38px;padding:9px 13px;font-size:12px;background:var(--green, #1b5d4b);border-color:var(--green, #1b5d4b);color:#fff;}.ds-work-action .ds-icon{width:14px;height:14px;}.ds-work-action:hover{background:#174d3e;border-color:#174d3e;}.ds-work-card :focus-visible{outline:2px solid var(--green-2, #26765a);outline-offset:3px;}.ds-work-source{margin:13px 0 14px;font-size:10px;line-height:1.7;color:#65786b;}.ds-readouts{display:grid;grid-template-columns:1.3fr 1.05fr 1.05fr 1.1fr;margin:0 0 21px;padding:12px 14px;border-radius:9px;background:#fcf7ed;align-items:center;}.ds-readouts>div{display:flex;align-items:center;padding:0 14px;min-width:0;border-left:1px solid #dce9e1;}.ds-readouts>div:first-child{padding-left:0;border-left:0;}.ds-readouts dl{min-width:0;margin:0;}.ds-readouts dt{margin:0 0 3px;color:#5e7368;font-size:10px;}.ds-readouts dd{margin:0;color:#615032;font-size:14px;font-weight:650;line-height:1.6;overflow-wrap:anywhere;}.ds-readouts>.ds-qualification{padding-right:0;border-left:0;}.ds-qualification p{margin:0;color:#5e7368;font-size:11px;}.ds-work-body{display:grid;grid-template-columns:1.5fr 1.1fr;align-items:start;gap:24px;padding-bottom:17px;}.ds-work-arguments{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;}.ds-work-arguments>section{min-width:0;}.ds-work-arguments>section+section,.ds-work-experience{border-left:1px solid #e7eee8;padding-left:21px;}.ds-work-card h4{margin:0 0 12px;font-size:13px;font-weight:700;color:#263e31;line-height:1.4;}.ds-work-arguments p{margin:0;color:var(--muted, #64746f);font-size:13px;line-height:1.85;overflow-wrap:anywhere;}.ds-work-experience{min-width:0;}.ds-work-experience dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 14px;margin:0;}.ds-work-experience dt{font-size:12px;font-weight:650;margin:0 0 4px;line-height:1.7;}.ds-work-experience dd{margin:0 0 0 23px;color:#687b70;font-size:12px;line-height:1.8;overflow-wrap:anywhere;}.ds-work-details{border-top:1px solid var(--line, #e2e9e5);}.ds-work-details>summary{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:14px 0 10px;color:#314d3c;cursor:pointer;font-size:12px;font-weight:650;}.ds-work-details>summary>span{color:#486b57;font-size:11px;font-weight:400;}.ds-work-details p{font-size:12px;line-height:1.75;overflow-wrap:anywhere;}.ds-work-footer{padding:0 0 13px 36px;font-size:10px;color:#586e5f;}@media(max-width:1180px){.ds-work-body{grid-template-columns:1fr;gap:20px;}.ds-work-experience{border-left:0;padding:16px 0 0;border-top:1px solid var(--line, #e2e9e5);}.ds-work-experience dl{grid-template-columns:repeat(3,minmax(0,1fr));}.ds-readouts{grid-template-columns:1.2fr 1fr 1fr;}.ds-qualification{grid-column:1/-1;margin-top:9px;}.ds-readouts>.ds-qualification{padding:0;}}@media(max-width:720px){.ds-work-card{padding:17px 16px 0;}.ds-work-heading{flex-wrap:wrap;gap:14px;align-items:flex-start;}.ds-work-identity{gap:10px;min-width:100%;}.ds-company{width:39px;height:39px;font-size:21px;}.ds-work-heading h3{font-size:18px;}.ds-work-heading p{font-size:11px;}.ds-work-actions{width:100%;justify-content:space-between;gap:8px;}.ds-work-action{min-height:34px;font-size:11px;}.ds-readouts{grid-template-columns:1fr;gap:12px;padding:13px;margin-bottom:18px;}.ds-readouts>div{padding:0;border-left:0;}.ds-readouts dl{flex:1;display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:baseline;}.ds-readouts dt{margin:0;font-size:11px;}.ds-readouts dd{font-size:12px;}.ds-qualification{margin:0;}.ds-work-arguments{grid-template-columns:1fr;gap:18px;}.ds-work-arguments>section+section{padding:0;border-left:0;}.ds-work-arguments p{font-size:12px;}.ds-work-experience dl{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;}.ds-work-details>summary{flex-wrap:wrap;gap:8px;}.ds-work-footer{padding-left:30px;}}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-secondary,.ds-work-action,.ds-evidence-chevron{transition-duration:.01ms;}}"
+    },
+    {
+      "name": "Evidence Disclosure",
+      "kind": "custom",
+      "refersTo": "evidence-group",
+      "description": "原生展开入口保留出处提示、来源数量与焦点；图标无需运行时。",
+      "html": "<details class=\"ds-evidence\"><summary><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Z\"/><path d=\"M12 5v15\"/></svg><div><strong>待遇细项与决策依据</strong><small>岗位披露 / 个人经历，保留来源与时间</small></div><span>0 条来源记录</span><span class=\"ds-evidence-chevron\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"m9 5 7 7-7 7\"/></svg></span></summary><div class=\"ds-evidence-body\"><p>暂无可回查证据，请先打开原岗位核对。</p><button class=\"ds-proof\" type=\"button\">依据 1<svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"m9 5 7 7-7 7\"/></svg></button></div></details>",
+      "css": ".ds-icon{display:inline-block;width:20px;height:20px;flex:none;vertical-align:middle;}.ds-evidence{border-top:1px solid var(--line, #e2e9e5);font-family:\"Segoe UI Variable Text\", \"Microsoft YaHei UI\", Aptos, sans-serif;color:var(--ink, #172b28);}.ds-evidence>summary{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 0 10px;color:#314d3c;cursor:pointer;font-size:12px;font-weight:650;}.ds-evidence>summary>.ds-icon{width:22px;height:22px;}.ds-evidence>summary>div{display:grid;gap:4px;}.ds-evidence strong{font-size:12px;font-weight:650;}.ds-evidence small{color:#586e5f;font-size:10px;font-weight:400;}.ds-evidence>summary>span{margin-left:auto;color:#486b57;font-size:11px;font-weight:400;}.ds-evidence-chevron{display:inline-flex;transition:transform 160ms ease;}.ds-evidence-chevron .ds-icon{width:13px;height:13px;}.ds-evidence[open] .ds-evidence-chevron{transform:rotate(90deg);}.ds-evidence-body{padding:17px 0 20px;border-top:1px solid #e8eee9;}.ds-evidence-body p{margin:6px 0;font-size:12px;line-height:1.75;overflow-wrap:anywhere;}.ds-proof{display:inline-flex;align-items:center;gap:1px;min-height:24px;margin:2px 0 1px 4px;padding:1px 6px;color:#587365;border:1px solid #e0e8e3;border-radius:6px;background:#f8faf8;cursor:pointer;font:inherit;font-size:10px;line-height:1.8;}.ds-proof .ds-icon{width:11px;height:11px;}.ds-proof:hover{color:#205d44;background:#eaf4ee;border-color:#b9d3c5;}.ds-evidence :focus-visible{outline:2px solid var(--green-2, #26765a);outline-offset:3px;}@media(max-width:720px){.ds-evidence>summary{flex-wrap:wrap;gap:8px;}.ds-evidence>summary>div{flex:1;min-width:160px;}.ds-evidence strong{font-size:11px;}.ds-evidence>summary>span{margin-left:30px;}}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-secondary,.ds-work-action,.ds-evidence-chevron{transition-duration:.01ms;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "可信招聘顾问工作台",
+    "overview": "“可信招聘顾问工作台”以浅灰绿导航、暖白内容面、森林绿动作和克制的薄荷／琥珀状态建立可信、易扫描的求职界面。品牌仍为职来 Agent；标题、事实、未知信息和证据入口各有明确层级，信息密度服务于用户核对下一步。\n\n本轮视觉重设计已由用户授权并委托自主选择，执行参考为[精致推荐工作台效果图](docs/assets/design/recommendation-comp.png)，其[生成记录](docs/assets/design/recommendation-comp.json)保留提示与选择依据。实际界面以 [commercial.css](src/job_agent/static/commercial.css) 在 [styles.css](src/job_agent/static/styles.css) 之后的覆盖结果为准：文字、卡片、图标和控件均为语义 HTML/CSS 或平面 SVG，不将效果图栅格化为页面。",
+    "keyCharacteristics": [
+      "浅色工作区与森林绿主动作，状态用文字配合薄荷或琥珀表达。",
+      "平面品牌 SVG 与同组细线 SVG 图标，无假公司 Logo。",
+      "内容容器平整、细边框分组，卡片高度由实际数据决定。",
+      "推荐页采用单列横向工作卡；其他页面沿用自身任务布局。"
+    ],
+    "rules": [
+      {
+        "name": "The Evidence Tone Rule",
+        "body": "薄荷表达可继续了解，琥珀表达需先核实；两者始终配有明确文字，不能把色彩当作录用概率或保证。",
+        "section": "colors"
+      },
+      {
+        "name": "The Flat Workspace Rule",
+        "body": "导航、推荐卡、旧面板、指标卡与总览主区保持平面；只有提示消息与模态对话框保留浮层阴影。",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do 优先使用当前覆盖样式的森林绿、暖白、浅导航与文字层级。",
+      "Do 让长标题、理由、风险和来源按内容换行，卡片自然增高。",
+      "Do 保留六组体验、待核实文案、可展开证据和可见键盘焦点。"
+    ],
+    "donts": [
+      "Don't 恢复深色侧栏、旧推荐双列长卡或卡片悬浮投影。",
+      "Don't 把效果图当成网页背景，或把效果图示例文案与固定高度当作真实数据约束。",
+      "Don't 把推荐页三分区推广为所有页面模板，或添加虚假 Logo、匹配概率和确定性结论。"
+    ]
+  }
+}

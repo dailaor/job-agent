@@ -1,6 +1,6 @@
 # 技术架构
 
-本文描述当前仓库已经实现的技术架构、稳定边界和后续扩展约束。它回答“系统如何运行、数据如何流动、模块为什么这样拆、增加功能应接在哪里”。产品目标和需求优先级见 [产品需求文档](REQUIREMENTS.md)，具体文件修改入口和验证命令见 [维护手册](MAINTENANCE.md)，渠道协议细节见 [渠道适配指南](CHANNEL_ADAPTERS.md)。
+本文描述当前仓库已经实现的技术架构、稳定边界和后续扩展约束。它回答“系统如何运行、数据如何流动、模块为什么这样拆、增加功能应接在哪里”。产品目标和需求优先级见 [产品需求文档](REQUIREMENTS.md)，岗位情报的准入、切分和检索细节见 [岗位情报 RAG 规范](RAG_KNOWLEDGE.md)，具体文件修改入口和验证命令见 [维护手册](MAINTENANCE.md)，渠道协议细节见 [渠道适配指南](CHANNEL_ADAPTERS.md)。
 
 ## 1. 架构范围
 
@@ -8,10 +8,11 @@
 
 - Python 进程同时提供本地 HTTP API、静态页面和任务编排。
 - 配置、简历、岗位、评估、投递台账和审计事件默认只保存在用户电脑。
+- 社区岗位情报经过确定性准入、主题切块和本地混合检索，只在岗位通过硬规则后形成可审计证据包。
 - 招聘网站通过固定白名单 Connector 接入；入口页可访问不等于已获得真实岗位。
 - 默认只把用户带到原始岗位页，由用户确认并完成最终提交。
 - BOSS 浏览器操作、官网表单执行和 IMAP 回执属于源码实验能力；基础便携包不包含 Playwright/Chromium。
-- LLM/BYOK、浏览器扩展、自动登录和验证码处理尚未实现，不属于当前架构的已交付能力。
+- LLM/BYOK 评分、浏览器扩展、自动登录和验证码处理尚未实现；当前规则评分故意不使用 RAG 证据改分。
 
 ### 当前能力与预留能力
 
@@ -21,10 +22,12 @@
 | 固定渠道岗位发现 | 已实现 | `ChannelRegistry` + 各 Connector |
 | 硬规则、双向规则评分和策略队列 | 已实现 | `matching.py` + `JobAgent.plan()` |
 | SQLite 台账、渠道健康度和审计事件 | 已实现 | `database.py` |
+| 岗位情报准入、切块、向量存储和两路检索 | 已实现 | `knowledge/*` + 独立知识表 |
+| 牛客单篇公开页 / 小红书可见正文导入 | 已实现、有界 | 不搜索、不翻页、不绕过登录或风控 |
 | 最终官网跳转 | 已实现 | 前端读取岗位原始 URL |
 | BOSS/官网真实写操作 | 实验性、默认关闭 | 显式 `live=true`；不确定结果转人工 |
 | IMAP 回执识别 | 实验性、默认关闭 | `receipts.py`；密码只读环境变量 |
-| LLM/BYOK 匹配 | 规划中 | 未来增加独立评分端口，不绕过硬规则 |
+| LLM/BYOK 匹配 | 规划中 | 已有 `ScoringPort` 和 `EvidenceBundle` 接口；实现仍需结构化模型适配器 |
 | 浏览器扩展自动填表 | 规划中 | `autofill.profile` 只是未来路由契约 |
 
 ## 2. 系统上下文
@@ -36,12 +39,16 @@ flowchart LR
     CLI["命令行"] --> SVC["AgentService"]
     API --> SVC
     SVC --> AGENT["JobAgent 编排器"]
+    SVC --> KNOW["KnowledgeService"]
     SVC --> CFG["config.json"]
     SVC --> RESUME["resumes/current.*"]
     AGENT --> REG["ChannelRegistry"]
     REG --> CONN["固定渠道 Connectors"]
     CONN --> PORTALS["招聘官网 / ATS / BOSS"]
+    KNOW --> KDB["知识文档 / 主题块 / 向量"]
+    KNOW --> POSTS["牛客单篇公开页 / 用户导入的可见正文"]
     AGENT --> MATCH["硬规则与双向评分"]
+    AGENT -->|"硬规则通过后"| KNOW
     AGENT --> DB["SQLite"]
     AGENT -. "实验性" .-> MAIL["IMAP 邮箱"]
     CONN -. "源码可选" .-> PW["Playwright"]
@@ -49,7 +56,7 @@ flowchart LR
     AGENT -. "未来" .-> LLM["LLM Scoring Port"]
 ```
 
-系统不依赖云端应用服务器。外部网络访问只发生在用户主动运行渠道发现、实验性执行或回执检查时。
+系统不依赖云端应用服务器。外部网络访问只发生在用户主动运行渠道发现、读取一个明确给出的牛客公开帖子、实验性执行或回执检查时；小红书适配器不直接发起抓取。
 
 ## 3. 运行时与入口
 
@@ -84,11 +91,14 @@ JobAgent/
 flowchart TB
     P["Presentation\nstatic/* + web.py + cli.py"]
     A["Application\nservice.py + orchestrator.py"]
-    D["Domain\nmodels.py + matching.py"]
+    D["Domain\nmodels.py + matching.py + scoring.py"]
+    K["Knowledge\nknowledge/*"]
     I["Infrastructure\ndatabase.py + connectors/* + receipts.py"]
     P --> A
     A --> D
+    A --> K
     A --> I
+    K --> D
     I --> D
 ```
 
@@ -98,13 +108,14 @@ flowchart TB
 | HTTP 层 | `web.py` | 路由、JSON 解析、错误响应、静态资源 | 业务规则和渠道特判 |
 | 应用服务 | `service.py` | 配置/文件协调、简历原子替换、查询门面 | 招聘网站协议 |
 | 编排层 | `orchestrator.py` | 采集、验证、持久化、评估、规划、执行、跟踪 | 解析具体站点 HTML/JSON |
-| 领域层 | `models.py`、`matching.py` | 标准模型、硬规则、评分、策略配额 | 网络和文件 I/O |
+| 领域层 | `models.py`、`matching.py`、`scoring.py` | 标准模型、硬规则、评分端口、策略配额 | 网络和文件 I/O |
+| 知识层 | `knowledge/` | 文档准入、主题切块、embedding、混合检索、来源适配和证据审计 | 改写硬规则或直接执行投递 |
 | 渠道层 | `connectors/` | 外部协议、字段标准化、有限写操作 | 跨渠道排序和持久化 |
 | 注册层 | `connectors/registry.py` | 渠道发现、就绪状态、工厂和能力声明 | 执行具体采集 |
 | 持久层 | `database.py` | SQLite schema、查询、去重、台账、审计 | UI 展示逻辑 |
 | 回执层 | `receipts.py` | 有界 IMAP 查询与回执证据提取 | 自动重投或猜测成功 |
 
-依赖方向以“外层调用内层”为主。Connector 可以构造标准 `Job`，但 `matching.py` 不应反向依赖任何具体 Connector。
+依赖方向以“外层调用内层”为主。Connector 可以构造标准 `Job`，但 `matching.py` 不应反向依赖任何具体 Connector；来源、embedding 和评分实现分别通过注册表或 Protocol 注入。
 
 ## 5. 核心业务流水线
 
@@ -147,6 +158,8 @@ sequenceDiagram
     participant C as Connector
     participant DB as SQLite
     participant M as matching.py
+    participant K as KnowledgeService
+    participant S as ScoringPort
 
     UI->>A: discover_selected(channel_ids)
     A->>R: 查询渠道、就绪状态和工厂
@@ -157,8 +170,13 @@ sequenceDiagram
     A->>DB: upsert + fingerprint 去重 + source_run
     UI->>A: evaluate()
     A->>DB: 读取“已发现”岗位
-    A->>M: hard_filter() → evaluate_job()
-    M-->>A: Evaluation
+    A->>M: hard_filter()
+    alt 硬规则通过且知识库启用
+        A->>K: retrieve_for_job(Job, Config)
+        K-->>A: EvidenceBundle
+    end
+    A->>S: score(Job, Config, EvidenceBundle?)
+    S-->>A: Evaluation
     A->>DB: 保存评估并更新岗位状态
     UI->>A: plan(channel)
     A->>DB: 查询对应 source 的可投岗位
@@ -174,6 +192,7 @@ sequenceDiagram
   → 同源幂等写入
   → 跨渠道指纹去重
   → 硬规则过滤
+  → 岗位情报两路检索（可选、失败可降级）
   → 人匹配岗位分
   → 岗位满足人分
   → 能力关系分类
@@ -184,7 +203,26 @@ sequenceDiagram
 
 每日额度只约束最终清单数量，不参与“冲高 / 持平 / 保底 / 不投”的能力关系定义。
 
-### 5.3 执行与投后跟踪
+### 5.3 岗位情报入库与检索
+
+```mermaid
+flowchart LR
+    SRC["单篇公开链接或用户可见正文"] --> POL["DocumentPolicy"]
+    POL -->|"accepted"| CH["按决策主题切块"]
+    POL -->|"needs_review / rejected / duplicate"| META["只存元数据与原因"]
+    CH --> EMB["EmbeddingProvider"]
+    EMB --> KDB["knowledge_documents + knowledge_chunks"]
+    JOB["通过硬规则的 Job"] --> RET["KnowledgeRetriever"]
+    KDB --> RET
+    RET --> AB["能力证据：职责 / 技能 / 面试"]
+    RET --> NEED["需求证据：强度 / 薪酬 / 文化 / 成长 / 稳定 / 办公"]
+    AB --> BUNDLE["EvidenceBundle"]
+    NEED --> BUNDLE
+```
+
+一篇帖子是一个父文档，子块保持父文档、原始 URL、偏移和主题。默认不保存整篇原文；只有 `accepted` 文档生成向量。能力证据允许同岗位族跨公司补足通用要求，需求证据必须公司与岗位族都精确匹配。详细门禁、权重和反爬策略见 [岗位情报 RAG 规范](RAG_KNOWLEDGE.md)。
+
+### 5.4 执行与投后跟踪
 
 - `live=false` 是默认值，只写演练事件，不改变招聘网站状态。
 - BOSS 使用专用多阶段协议：开场白成功后等待有效 HR 入站回复，之后才允许发送固定简历。
@@ -202,6 +240,9 @@ sequenceDiagram
 | `Job` | `(source, source_id)` | 标准化岗位及原始证据 |
 | 跨渠道岗位 | `fingerprint(company,title,location)` | 发现同一岗位的多渠道副本 |
 | `Evaluation` | `job_id` | 硬规则结果、双向分数、分类与解释 |
+| `PostDocument` | `(source, normalized_url)` + `content_hash` | 一篇可追溯社区帖及准入元数据 |
+| `KnowledgeChunk` | `document_id + chunk_hash` | 单一决策主题、上下文文本与向量 |
+| `EvidenceBundle` | `job_id + retrieved_at` | 分开的能力证据、需求证据和覆盖度 |
 | Application | 唯一 `job_id` | 投递计划、执行状态和外部证据 |
 | Event | `entity_type + entity_id` | 追加式审计记录 |
 | SourceRun | `source + time` | 渠道最近一次真实运行健康度 |
@@ -233,6 +274,10 @@ SQLite 启用 WAL 和外键。当前关系如下：
 erDiagram
     JOBS ||--o| EVALUATIONS : "evaluated as"
     JOBS ||--o| APPLICATIONS : "planned once"
+    JOBS ||--o{ KNOWLEDGE_RETRIEVAL_RUNS : "retrieves"
+    JOBS ||--o{ EVALUATION_EVIDENCE : "uses"
+    KNOWLEDGE_DOCUMENTS ||--o{ KNOWLEDGE_CHUNKS : "split into"
+    KNOWLEDGE_CHUNKS ||--o{ EVALUATION_EVIDENCE : "cited by"
     JOBS {
         integer id PK
         string source
@@ -269,6 +314,34 @@ erDiagram
         string status
         integer records_count
     }
+    KNOWLEDGE_DOCUMENTS {
+        integer id PK
+        string source
+        string source_url
+        string company
+        string role_family
+        string policy_status
+        string content_hash
+    }
+    KNOWLEDGE_CHUNKS {
+        integer id PK
+        integer document_id FK
+        string topic
+        string contextual_text
+        blob embedding
+    }
+    KNOWLEDGE_RETRIEVAL_RUNS {
+        integer id PK
+        integer job_id FK
+        string evidence_json
+        string retrieved_at
+    }
+    EVALUATION_EVIDENCE {
+        integer job_id FK
+        integer chunk_id FK
+        string dimension
+        number retrieval_score
+    }
 ```
 
 约束：
@@ -277,6 +350,9 @@ erDiagram
 - `applications.job_id` 唯一，避免同一标准岗位进入多份投递清单。
 - `evaluations.job_id` 与岗位一对一，重新评估覆盖旧结果。
 - `events` 和 `source_runs` 是历史记录，不承担当前状态的唯一真相。
+- `knowledge_documents` 对 `(source, url_hash)` 唯一，跨来源相同 `content_hash` 标为重复。
+- 只有 `policy_status=accepted` 的父文档拥有 `knowledge_chunks`；向量以 provider 名、维度和 float32 BLOB 一起保存。
+- `evaluation_evidence` 记录能力/需求维度与排名；`knowledge_retrieval_runs` 保留当次完整证据包供审计。
 - schema 变更必须向前兼容；当前采用启动时检测字段并执行小型增量迁移。
 
 ## 8. 渠道扩展架构
@@ -331,6 +407,12 @@ class JobConnector(Protocol):
 | GET/PUT | `/api/config` | 读取或保存配置 |
 | GET/POST | `/api/resume` | 当前简历状态或替换简历 |
 | GET | `/api/channels` | 渠道就绪状态和健康度 |
+| GET | `/api/knowledge/status`、`documents` | 知识库状态与文档目录 |
+| GET | `/api/knowledge/jobs/<id>/evidence` | 读取岗位最近一次证据包；无缓存时按当前配置检索 |
+| POST | `/api/knowledge/documents` | 准入并导入一篇用户审阅的帖子 |
+| POST | `/api/knowledge/fetch` | 读取一个明确给出的公开帖子链接 |
+| POST | `/api/knowledge/retrieve` | 为一个已持久化岗位刷新证据包 |
+| DELETE | `/api/knowledge/documents/<id>` | 删除本地父文档及其证据块 |
 | POST | `/api/demo/seed` | 导入离线演示岗位 |
 | POST | `/api/run/discover` | 运行选定渠道采集 |
 | POST | `/api/run/evaluate` | 运行硬规则和评分 |
@@ -347,11 +429,13 @@ class JobConnector(Protocol):
 `config.json` 是唯一配置真相，主要分为：
 
 - `candidate`：候选人档案和受管简历路径；
-- `preferences`：关键词、硬规则、策略、额度和渠道优先级；
+- `preferences`：关键词、硬规则、策略、额度、渠道优先级，以及供 RAG 需求侧使用的强度、职责边界、成长、稳定性和文化软偏好；
 - `greetings`：固定开场白模板；
 - `fixed_answers`：用户明确提供的基础表单值；
 - `boss`：BOSS 实验渠道设置；
 - `official_sites`：固定官网/ATS 定义；
+- `knowledge`：来源白名单、公司/岗位族别名、文档门禁、embedding 与 Top-K 设置；
+- `scoring`：规则或 DeepSeek Judge、模型名、HTTPS 端点、超时和 API Key 环境变量名；
 - `mail`：默认关闭的 IMAP 设置。
 
 新增 dataclass 字段必须提供安全默认值，旧配置必须仍能读取。密钥、邮箱应用密码、Cookie 和 Token 不得进入示例配置；秘密只允许来自环境变量或未来的本地安全存储。
@@ -362,6 +446,8 @@ class JobConnector(Protocol):
 - 简历只接受 PDF/DOCX、最大 10 MB，并先解析再替换当前版本。
 - 网络响应有超时、大小和数量上限；单渠道失败不抹掉其他渠道结果。
 - 所有外链和 HTTP redirect 都经过 HTTPS 与 host 白名单复核。
+- 岗位情报只接受单篇可追溯来源；小红书不直接抓取，牛客单篇读取有限速、超时、大小上限且不重试。
+- 社区正文先脱敏再切块；默认不保留整篇原文，拒绝文档不生成向量。
 - 登录、验证码、未知必填项、页面结构变化和不确定副作用统一停止自动流程。
 - 真实写操作默认关闭、无自动重试，并必须保存证据或进入人工核验。
 - `config.json`、`data/`、简历、数据库和浏览器状态均由 `.gitignore` 排除。
@@ -370,11 +456,12 @@ class JobConnector(Protocol):
 
 ### LLM 评分
 
-未来模型能力应作为独立 `ScoringPort` 接在硬规则之后、规划之前：
+模型能力通过独立 `ScoringPort` 接在硬规则之后、规划之前：
 
 ```text
 hard_filter(Job, Candidate, Preferences)
-  → RuleScorer 或 LlmScorer
+  → EvidenceProvider.retrieve_for_job()（可选）
+  → RuleScorer 或 DeepSeekScoringPort
   → {match_score, need_score, confidence, reasons, evidence}
   → strategy allocation
 ```
@@ -382,10 +469,13 @@ hard_filter(Job, Candidate, Preferences)
 要求：
 
 - 始终分别输出“人匹配岗位”和“岗位满足人”，不能合并成不可解释的单分。
+- 每条社区推断都引用 `EvidenceBundle` 中的块 ID 和原帖 URL；多来源冲突与证据不足必须显式输出。
 - LLM 失败时可回退规则评分；不能跳过硬规则。
 - 提示词单独版本化并配结构化输出校验与测试 fixture。
 - API Key 只从环境变量或本地安全存储读取。
 - 模型输入最小化，不默认上传完整简历文件；UI 必须明确告知数据去向。
+- `DeepSeekScoringPort` 使用 `deepseek-v4-flash` JSON Output；解析、枚举、数值区间、证据块 ID 和维度作用域全部在本地二次校验。
+- 正职与实习在文档、块前缀、候选查询和证据包中均为显式字段，任何评分端口都不得跨类型引用。
 
 ### 浏览器扩展
 
@@ -397,6 +487,10 @@ hard_filter(Job, Candidate, Preferences)
 |---|---|
 | 领域模型或规则 | 对应单元测试 + 全量离线测试 |
 | 数据库 schema | 旧数据库迁移测试 + 新库测试 |
+| 文档准入或切块 | accepted/review/rejected/duplicate fixture + PII/页面壳门禁 + 父子溯源 |
+| embedding 或检索权重 | 固定黄金集 Recall@K/nDCG@K + 两路主题、公司和用工类型隔离测试 |
+| LLM Judge | JSON 有效率、金标准确率、引用正确率、硬规则守恒、用工类型泄漏率和证据顺序稳定性 |
+| 新知识来源 | 公开/登录边界、域名、限速、超时、大小上限和停止状态测试 + 单链接现场冒烟 |
 | 新渠道 | 离线解析/映射测试 + HTTPS 白名单测试 + 单渠道现场冒烟 |
 | 简历链路 | 非法文件、同格式替换、跨格式替换、失败回滚 |
 | 前端/API | 桌面、约 390 px、键盘、错误态和空结果 |
@@ -418,10 +512,12 @@ $env:PYTHONPATH='src'
 
 1. 真实岗位证据先于评分。
 2. 硬规则先于任何规则或模型软排序。
-3. 能力关系、公司档位和每日额度彼此独立。
-4. 渠道特例留在 Connector，通用流程只消费标准模型。
-5. 不确定写操作不重试，状态推进必须有证据。
-6. 本地数据不进入 Git，秘密不进入配置模板。
+3. 社区证据不能覆盖硬规则；能力证据和需求证据分开检索并保留原帖溯源。
+4. 正职与实习是互斥检索作用域，没有跨类型回退。
+5. 能力关系、公司档位和每日额度彼此独立。
+6. 渠道特例留在 Connector，通用流程只消费标准模型。
+7. 不确定写操作不重试，状态推进必须有证据。
+8. 本地数据不进入 Git，秘密不进入配置模板。
 
 ### 已知技术债
 
@@ -429,6 +525,15 @@ $env:PYTHONPATH='src'
 - 数据库迁移目前是少量启动时增量 SQL；schema 复杂后应引入显式迁移版本表。
 - 本地 HTTP API 没有认证，安全前提是默认 loopback 和单用户运行。
 - `config.json` 与简历文件替换通过补偿回滚近似事务，不具备跨文件系统与 SQLite 的真正原子事务。
-- 规则评分是当前实现；LLM、提示词版本、模型成本与隐私策略需要在实现前另做架构决策记录。
+- 内置 hashing embedding 是便携基线，中文语义召回上限有限；接入真实 embedding 前需要黄金集和全量重建机制。
+- DeepSeek Judge 已实现，但仍需以人工黄金集持续校准提示词、阈值、模型成本和隐私告知；规则评分保留为离线基线与故障回退。
 
 当以上不变量、外部系统、存储方式或主要模块边界发生变化时，应在同一提交中更新本文。
+
+## 15. 智能推荐只读层（2026-10-12）
+
+`GET /api/recommendations → AgentService.recommendations → recommendations.build_recommendations` 直接使用 SQLite `mode=ro` 读取岗位和当前 accepted 文档/块。它不构造 Database/KnowledgeStore，不触发迁移、检索写入、模型调用、采集或投递。
+
+推荐卡按当前配置重新核对学历、经验、薪资口径与已知硬条件；历史评分与旧“已过滤”状态不代替当前档案判断。重复/过期留在岗位池。社区须同公司、岗位族、用工；城市/团队完整对齐才作为直接样本，缺失是背景、明确冲突排除。先按适用性选证据再限量，否定/冲突与面经语义不能变成正向工作体验支持。
+
+前端模块 `static/recommendations.js` 独立负责卡片、筛选、展开、证据焦点和请求状态；`app.js` 负责加载与导航。待遇细项与六组体验数据来自后端契约，所有用户文本转义、外链仅 http(s)且无嵌入凭据。岗位池禁用一键入口没有事件或执行器接线。

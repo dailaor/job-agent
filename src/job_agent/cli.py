@@ -41,6 +41,14 @@ def build_parser() -> argparse.ArgumentParser:
     login.add_argument("--timeout", type=int, default=5)
     cycle = sub.add_parser("run-cycle")
     cycle.add_argument("--live", action="store_true")
+    knowledge_import = sub.add_parser("knowledge-import", help="Import one reviewed community post from JSON")
+    knowledge_import.add_argument("--file", required=True, help="UTF-8 JSON document payload")
+    knowledge_fetch = sub.add_parser("knowledge-fetch", help="Fetch one explicitly supplied public post URL")
+    knowledge_fetch.add_argument("--source", required=True, choices=["nowcoder", "xiaohongshu"])
+    knowledge_fetch.add_argument("--url", required=True)
+    sub.add_parser("knowledge-list", help="List local job-intelligence documents")
+    knowledge_retrieve = sub.add_parser("knowledge-retrieve", help="Build an evidence bundle for one persisted job")
+    knowledge_retrieve.add_argument("--job-id", type=int, required=True)
     return parser
 
 
@@ -84,6 +92,15 @@ async def _run(args: argparse.Namespace) -> int:
             await connector.close()
     elif args.command == "run-cycle":
         _print(await agent.run_cycle(live=args.live))
+    elif args.command == "knowledge-import":
+        payload = json.loads(Path(args.file).read_text(encoding="utf-8"))
+        _print(service.import_knowledge_document(payload))
+    elif args.command == "knowledge-fetch":
+        _print(service.fetch_knowledge_url(args.source, args.url))
+    elif args.command == "knowledge-list":
+        _print(service.knowledge_documents())
+    elif args.command == "knowledge-retrieve":
+        _print(service.retrieve_job_evidence(args.job_id))
     return 0
 
 

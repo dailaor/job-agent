@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol
 from urllib.parse import urlparse
 
 from .config import AgentConfig
@@ -9,9 +9,15 @@ from .connectors.base import ActionResult, ActionStatus
 from .connectors.boss import BossConnector
 from .connectors.registry import ChannelAdapter, ChannelRegistry, build_channel_registry
 from .database import Database
-from .matching import evaluate_job, strategy_allocation
-from .models import ApplicationStatus, JobStatus, Strategy, utc_now
+from .knowledge.models import EvidenceBundle
+from .matching import hard_filter, strategy_allocation
+from .models import ApplicationStatus, Job, JobStatus, Strategy, utc_now
 from .receipts import ImapReceiptChecker
+from .scoring import RuleScoringPort, ScoringPort
+
+
+class EvidenceProvider(Protocol):
+    def retrieve_for_job(self, job: Job, config: AgentConfig) -> EvidenceBundle: ...
 
 
 class JobAgent:
@@ -20,10 +26,15 @@ class JobAgent:
         config: AgentConfig,
         database: Database,
         channel_registry: ChannelRegistry | None = None,
+        evidence_provider: EvidenceProvider | None = None,
+        scorer: ScoringPort | None = None,
     ) -> None:
         self.config = config
         self.db = database
         self.channel_registry = channel_registry or build_channel_registry(config)
+        self.evidence_provider = evidence_provider
+        self.rule_scorer = RuleScoringPort()
+        self.scorer = scorer or self.rule_scorer
 
     def channel_catalog(self) -> list[dict[str, Any]]:
         latest_runs = self.db.latest_source_runs()
@@ -221,12 +232,33 @@ class JobAgent:
 
     def evaluate(self) -> dict[str, int]:
         rows = self.db.list_jobs(status=JobStatus.DISCOVERED.value)
-        evaluated = eligible = rejected = 0
+        evaluated = eligible = rejected = evidence_jobs = evidence_failures = scoring_failures = 0
         for row in rows:
             job = self.db.get_job(int(row["id"]))
             if job is None:
                 continue
-            evaluation = evaluate_job(job, self.config)
+            evidence = None
+            hard_reasons = hard_filter(job, self.config)
+            # Retrieval stays after deterministic hard filtering, so community anecdotes can
+            # never rescue an expired, off-target, or otherwise ineligible job.
+            if not hard_reasons and self.evidence_provider is not None:
+                try:
+                    evidence = self.evidence_provider.retrieve_for_job(job, self.config)
+                    if evidence.evidence_count:
+                        evidence_jobs += 1
+                except Exception as exc:
+                    evidence_failures += 1
+                    self.db.event("job", job.id or 0, "evidence_retrieval_failed", {"error": str(exc)})
+            if hard_reasons:
+                # A model scorer is never called for a hard-rejected job.
+                evaluation = self.rule_scorer.score(job, self.config, None)
+            else:
+                try:
+                    evaluation = self.scorer.score(job, self.config, evidence)
+                except Exception as exc:
+                    scoring_failures += 1
+                    self.db.event("job", job.id or 0, "scoring_failed", {"error": str(exc)})
+                    evaluation = self.rule_scorer.score(job, self.config, evidence)
             self.db.save_evaluation(evaluation)
             evaluated += 1
             if evaluation.strategy is Strategy.SKIP:
@@ -236,7 +268,14 @@ class JobAgent:
                 self.db.set_job_status(job.id or 0, JobStatus.ELIGIBLE)
                 eligible += 1
             self.db.event("job", job.id or 0, "evaluated", evaluation.to_dict())
-        return {"evaluated": evaluated, "eligible": eligible, "rejected": rejected}
+        return {
+            "evaluated": evaluated,
+            "eligible": eligible,
+            "rejected": rejected,
+            "evidence_jobs": evidence_jobs,
+            "evidence_failures": evidence_failures,
+            "scoring_failures": scoring_failures,
+        }
 
     def _planning_sources(self, channel: str) -> tuple[list[str], int]:
         if channel == "boss":

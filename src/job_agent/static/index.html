@@ -3,20 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>求职 Agent 控制台</title>
+  <title>职来 Agent</title>
+  <link rel="icon" href="/brand-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/commercial.css">
 </head>
 <body>
+  <!-- RECOMMENDATION-CARDS-20261012
+  THESIS: 让用户以可投门槛、待遇、工作体验和证据决定下一步。
+  OWN-WORLD: 浅色导航与暖白阅读面，森林绿动作，薄荷读数与琥珀待核实状态。
+  STORY: 先读理由和风险，再看六组体验，点证据核对原文，进入原岗位。
+  FIRST VIEWPORT: 208px左导航，标题/动作与紧凑筛选，横向岗位卡：身份、三项读数、理由/风险/六体验三分区、展开证据。
+  FORM: 可信招聘顾问工作台；seed 0fd02424候选7，用户委托自主选择comp-2作为图片先行基准。
+  FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+  -->
   <div class="shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">JA</div>
-        <div><strong>Job Agent</strong><span>本地求职控制台</span></div>
+        <img class="brand-mark" src="/brand-icon.svg" alt="" width="42" height="42">
+        <div><strong>职来 Agent</strong><span>求职工作台</span></div>
       </div>
       <nav id="nav">
-        <button class="nav-item active" data-view="overview">总览</button>
+        <button class="nav-item active" data-view="recommendations" aria-current="page">智能推荐</button>
+        <button class="nav-item" data-view="overview">总览</button>
         <button class="nav-item" data-view="jobs">岗位池</button>
         <button class="nav-item" data-view="applications">投递台账</button>
+        <button class="nav-item" data-view="knowledge">岗位情报库</button>
         <button class="nav-item" data-view="config">配置</button>
         <button class="nav-item" data-view="audit">审计日志</button>
       </nav>
@@ -29,21 +41,33 @@
     <main>
       <header>
         <div>
-          <h1 id="page-title">求职工作台</h1>
-          <p class="page-description">在本机筛选岗位，保留每一步决策依据。</p>
+          <h1 id="page-title" tabindex="-1">智能推荐</h1>
+          <p class="page-description" id="page-description">看清值得投的理由，也看清要先确认的风险。</p>
         </div>
         <div class="header-actions">
           <span id="last-refresh" class="muted"></span>
           <button class="button ghost" id="refresh">刷新</button>
-          <button class="button primary" id="run-cycle">开始智能匹配</button>
+          <button class="button primary" data-open-task>寻找匹配岗位</button>
         </div>
       </header>
 
-      <section class="view active" id="view-overview">
+      <section class="view active" id="view-recommendations" aria-label="智能推荐工作卡">
+        <div class="recommendation-overview" id="recommendation-overview" aria-live="polite"></div>
+        <div class="recommendation-filters" role="search" aria-label="筛选推荐岗位">
+          <label class="recommendation-search"><span class="sr-only">搜索推荐</span><input id="recommendation-search" type="search" placeholder="岗位、公司或地点" autocomplete="off"></label>
+          <label><span>下一步</span><select id="recommendation-status"><option value="">全部候选</option><option value="recommend">优先了解</option><option value="verify">先核实信息</option></select></label>
+          <label class="recommendation-check"><input id="recommendation-evidence-only" type="checkbox"><span>有同团队体验样本</span></label>
+          <button class="button ghost" id="recommendation-reset" type="button" hidden>清除筛选</button>
+        </div>
+        <p class="recommendation-order" id="recommendation-order" role="status" aria-live="polite" aria-atomic="true">先核对门槛，再优先展示与本岗位直接相关的决策证据。</p>
+        <div id="recommendation-results" class="recommendation-grid" aria-busy="true"></div>
+      </section>
+
+      <section class="view" id="view-overview">
         <div class="hero">
           <div>
-            <h2>把时间留给值得投的岗位。</h2>
-            <p>沿用上次条件或重新设置本次目标。Agent 会从已适配渠道采集岗位，先过硬规则，再按冲高、持平和保底给出可解释结果。</p>
+            <h2>让每一次投递都更值得。</h2>
+            <p>从已适配渠道整理岗位，在智能推荐中查看可投门槛、待遇、工作体验，以及支持每个理由的证据；在岗位池管理全部机会与投递计划。</p>
           </div>
           <div class="hero-actions">
             <button class="button light" data-action="seed">体验演示数据</button>
@@ -56,14 +80,14 @@
         <div class="grid two">
           <article class="panel">
             <div class="panel-head">
-              <div><h3>投递策略分布</h3><p class="panel-help">只统计通过硬规则的岗位；“不投”属于过滤结果，不是第四种执行策略。</p></div>
+              <div><h3>投递策略分布</h3></div>
             </div>
             <div id="strategy-chart" class="strategy-chart"></div>
             <div id="skip-summary" class="skip-summary"></div>
           </article>
           <article class="panel">
             <div class="panel-head split">
-              <div><h3>渠道健康度</h3><p class="panel-help">表示抓取适配器最近能否取得真实岗位，不代表岗位匹配度。</p></div>
+              <div><h3>岗位来源</h3></div>
               <button class="button ghost small" data-go-config>配置渠道</button>
             </div>
             <div id="source-health" class="source-list"></div>
@@ -92,6 +116,7 @@
               <button class="button ghost" data-action="discover">选择渠道抓取</button>
               <button class="button primary" data-action="evaluate">评估新岗位</button>
               <button class="button accent" data-action="plan-all">生成投递清单</button>
+              <span class="planned-apply"><button class="button" id="jobs-one-click-apply" type="button" disabled aria-describedby="jobs-one-click-note">一键投递 · 未开放</button><small id="jobs-one-click-note">当前请逐个查看原岗位，确认后投递</small></span>
             </div>
           </div>
           <div id="run-result" class="run-result" hidden></div>
@@ -112,6 +137,72 @@
         <article class="panel">
           <div class="panel-head"><div><h3>统一投递台账</h3></div></div>
           <div class="table-wrap"><table><thead><tr><th>岗位 / 公司</th><th>渠道</th><th>策略</th><th>状态</th><th>更新时间</th><th>证据 / 异常</th></tr></thead><tbody id="applications-body"></tbody></table></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-knowledge">
+        <article class="panel knowledge-intro">
+          <div>
+            <h3>用真实岗位经历补足 JD 没写出来的部分</h3>
+            <p>情报只在岗位通过硬规则后参与检索，不会覆盖学历、地点、薪资等确定性约束。首批聚焦美团、滴滴、快手、腾讯、京东，以及产品、数据、算法和后端岗位族；当前规则评分只记录证据，不据此改分。</p>
+          </div>
+          <div id="knowledge-state" class="knowledge-state" aria-live="polite"></div>
+        </article>
+
+        <div class="knowledge-layout">
+          <article class="panel knowledge-import-panel">
+            <div class="panel-head">
+              <h3>导入一篇可追溯帖子</h3>
+              <p class="panel-help">一篇帖子是一份父文档；系统按职责、技能、面试、强度、薪酬、文化、成长、稳定性和办公方式切成决策证据块。</p>
+            </div>
+            <form id="knowledge-import-form" class="form-grid two-cols">
+              <label><span>来源</span><select id="knowledge-source"><option value="nowcoder">牛客</option><option value="xiaohongshu">小红书</option><option value="manual">其他公开来源</option></select></label>
+              <label><span>采集方式</span><select id="knowledge-method"><option value="manual_import">人工粘贴</option><option value="browser_visible">登录后浏览器可见内容</option></select><small>不提交 Cookie、Token 或密码。</small></label>
+              <label><span>公司</span><select id="knowledge-company" required></select></label>
+              <label><span>岗位族</span><select id="knowledge-role" required></select></label>
+              <label><span>用工类型</span><select id="knowledge-employment-type" required><option value="full_time">正职</option><option value="internship">实习</option></select><small>正职含校招、社招；与实习严格分库检索。</small></label>
+              <label class="span-2"><span>原帖链接</span><input id="knowledge-url" type="url" inputmode="url" placeholder="https://..." required><small>必须保留可追溯的 HTTPS 来源；平台与链接域名需一致。</small></label>
+              <label class="span-2"><span>帖子标题</span><input id="knowledge-title" maxlength="300" required></label>
+              <label><span>发布时间</span><input id="knowledge-published" type="date"><small>缺少或无法确认时会进入待复核，不会直接向量化。</small></label>
+              <label><span>业务线（可选）</span><input id="knowledge-unit" placeholder="例如：到店、腾讯云"></label>
+              <label><span>城市（可选）</span><input id="knowledge-city"></label>
+              <label><span>职级 / 年资（可选）</span><input id="knowledge-seniority" placeholder="例如：校招、3 年经验"></label>
+              <label class="span-2"><span>当前可见的完整正文</span><textarea id="knowledge-content" rows="11" minlength="120" maxlength="20000" placeholder="只粘贴与岗位判断相关的原帖正文；不要拼接多篇帖子。" required></textarea><small id="knowledge-content-count">0 / 20,000 字</small></label>
+              <label class="check-row span-2"><input id="knowledge-approve-review" type="checkbox"><span>若仅缺少发布时间，我已人工核对来源并同意本次入库</span></label>
+              <div class="span-2 form-actions"><button class="button primary" id="knowledge-import" type="submit">检查并导入</button><span id="knowledge-import-result" class="muted" role="status"></span></div>
+            </form>
+          </article>
+
+          <aside class="knowledge-side">
+            <article class="panel">
+              <div class="panel-head"><h3>尝试读取公开页面</h3><p class="panel-help">只处理你明确提供的单篇链接，不搜索、不翻页、不重试。</p></div>
+              <form id="knowledge-fetch-form" class="form-grid">
+                <label><span>平台</span><select id="knowledge-fetch-source"><option value="nowcoder">牛客公开讨论页</option><option value="xiaohongshu">小红书</option></select></label>
+                <label><span>单篇 HTTPS 链接</span><input id="knowledge-fetch-url" type="url" inputmode="url" placeholder="https://www.nowcoder.com/discuss/..." required></label>
+                <button class="button ghost" id="knowledge-fetch" type="submit">读取这一个页面</button>
+                <p id="knowledge-fetch-result" class="source-guidance" role="status">牛客仅解析公开讨论页并限速；小红书不会直接抓取，会提示改用登录后可见正文导入。</p>
+              </form>
+            </article>
+            <article class="panel admission-policy">
+              <div class="panel-head"><h3>什么内容值得入库</h3></div>
+              <ul>
+                <li><b>可追溯</b><span>有原帖链接、明确公司与岗位族。</span></li>
+                <li><b>语境唯一</b><span>必须能唯一确认是正职或实习；检索不会跨类型回退。</span></li>
+                <li><b>能改变判断</b><span>至少包含一类职责、技能、面试或岗位需求事实。</span></li>
+                <li><b>仍有时效</b><span>默认两年内，组织与薪酬信息优先看近期内容。</span></li>
+                <li><b>不是页面壳</b><span>拒绝登录提示、验证码、软广、短水帖和跨帖拼接。</span></li>
+              </ul>
+              <p>默认不保存整篇原文，只保存脱敏后的证据块、内容哈希和来源元数据。</p>
+            </article>
+          </aside>
+        </div>
+
+        <article class="panel">
+          <div class="panel-head split">
+            <div><h3>已处理帖子</h3><p class="panel-help">“待复核”和“拒绝”不会生成向量；重复内容只保留来源关系。</p></div>
+            <button class="button ghost small" id="knowledge-refresh" type="button">刷新情报库</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>帖子 / 来源</th><th>公司 / 岗位族</th><th>准入结果</th><th>证据主题</th><th>时间</th><th>操作</th></tr></thead><tbody id="knowledge-body"></tbody></table></div>
         </article>
       </section>
 
@@ -160,6 +251,18 @@
                 <label><input type="checkbox" name="cfg-work-mode" value="混合">混合</label>
                 <label><input type="checkbox" name="cfg-work-mode" value="远程">远程</label>
               </div></fieldset>
+              <fieldset class="experience-preferences span-2">
+                <legend>岗位体验偏好</legend>
+                <p>这些是 RAG 软判断依据，不会像地点、学历或薪资那样直接过滤岗位。</p>
+                <div class="form-grid two-cols compact">
+                  <label><span>工作强度取向</span><select id="cfg-workload-preference"><option value="low_intensity">更看重节奏可控</option><option value="balanced">强度与成长平衡</option><option value="growth_first">成长优先，可接受高强度</option></select></label>
+                  <label><span>职责边界偏好</span><select id="cfg-role-boundary-preference"><option value="no_preference">没有明确偏好</option><option value="clear">希望职责边界清晰</option><option value="broad">接受综合型、边界较宽</option></select></label>
+                  <label><span>成长优先级</span><select id="cfg-growth-priority"><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></label>
+                  <label><span>稳定性优先级</span><select id="cfg-stability-priority"><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></label>
+                  <label><span>希望的团队与文化</span><textarea id="cfg-culture-preferences" rows="2" maxlength="800" placeholder="例如：导师反馈、目标清晰、技术氛围；逗号或换行分隔"></textarea></label>
+                  <label><span>尽量避开的体验风险</span><textarea id="cfg-community-risk-avoidances" rows="2" maxlength="800" placeholder="例如：长期高强度、职责边界模糊、频繁调整方向"></textarea></label>
+                </div>
+              </fieldset>
               <label><span>月薪最低期望（元）</span><input id="cfg-min-salary" type="number" min="0" step="1000" placeholder="留空表示不限"></label>
               <label><span>最多接受经验差距（年）</span><input id="cfg-max-gap" type="number" min="0" max="20" step="0.5"></label>
               <label><span>只看最近发布（天）</span><input id="cfg-recent-days" type="number" min="1" max="3650" placeholder="留空表示不限"></label>
@@ -285,6 +388,21 @@
           </div>
         </details>
 
+        <details class="advanced-rules" id="task-experience-preferences">
+          <summary><span><strong>岗位体验偏好</strong><small>让 RAG 知道强度、成长、稳定性和团队文化对你意味着什么</small></span><span class="summary-action">展开设置</span></summary>
+          <div class="advanced-rules-body">
+            <p class="soft-rule-note">社区帖子只提供参考证据；这里的选择用于软评分，不会覆盖硬性条件。</p>
+            <div class="form-grid two-cols compact">
+              <label><span>工作强度取向</span><select id="task-workload-preference"><option value="low_intensity">更看重节奏可控</option><option value="balanced">强度与成长平衡</option><option value="growth_first">成长优先，可接受高强度</option></select></label>
+              <label><span>职责边界偏好</span><select id="task-role-boundary-preference"><option value="no_preference">没有明确偏好</option><option value="clear">希望职责边界清晰</option><option value="broad">接受综合型、边界较宽</option></select></label>
+              <label><span>成长优先级</span><select id="task-growth-priority"><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></label>
+              <label><span>稳定性优先级</span><select id="task-stability-priority"><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></label>
+              <label><span>希望的团队与文化</span><textarea id="task-culture-preferences" rows="2" maxlength="800" placeholder="例如：导师反馈、目标清晰、技术氛围"></textarea></label>
+              <label><span>尽量避开的体验风险</span><textarea id="task-community-risk-avoidances" rows="2" maxlength="800" placeholder="例如：长期高强度、职责边界模糊"></textarea></label>
+            </div>
+          </div>
+        </details>
+
         <fieldset class="strategy-picker">
           <legend>投递策略</legend>
           <div class="strategy-options">
@@ -338,6 +456,8 @@
       <div class="dialog-actions"><button value="cancel" class="button ghost">取消</button><button value="confirm" class="button danger" id="confirm-live">确认执行</button></div>
     </form>
   </dialog>
+  <script src="/ui-icons.js"></script>
+  <script src="/recommendations.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

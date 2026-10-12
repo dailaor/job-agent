@@ -8,8 +8,12 @@ from uuid import uuid4
 
 from .config import AgentConfig, config_from_dict, config_to_dict, load_config, save_config
 from .database import Database
+from .knowledge import KnowledgeService
+from .matching import hard_filter
 from .orchestrator import JobAgent
 from .resume import extract_resume_text, infer_resume_profile
+from .recommendations import build_recommendations
+from .scoring import build_scoring_port
 
 
 class AgentService:
@@ -27,8 +31,19 @@ class AgentService:
     def db(self) -> Database:
         return Database(self.database_path)
 
-    def agent(self) -> JobAgent:
-        return JobAgent(self.config, self.db)
+    def agent(self, *, include_knowledge: bool = True) -> JobAgent:
+        config = self.config
+        knowledge = self.knowledge_service(config=config) if include_knowledge and config.knowledge.enabled else None
+        return JobAgent(
+            config,
+            self.db,
+            evidence_provider=knowledge,
+            scorer=build_scoring_port(config),
+        )
+
+    def knowledge_service(self, *, config: AgentConfig | None = None) -> KnowledgeService:
+        active = config or self.config
+        return KnowledgeService(active.knowledge, self.db)
 
     def get_config(self) -> dict[str, Any]:
         return config_to_dict(self.config)
@@ -164,17 +179,54 @@ class AgentService:
 
     def dashboard(self) -> dict[str, Any]:
         data = self.db.dashboard()
-        data["channels"] = self.agent().channel_catalog()
+        data["channels"] = self.agent(include_knowledge=False).channel_catalog()
+        try:
+            data["knowledge"] = self.knowledge_service().status()
+        except Exception as exc:
+            data["knowledge"] = {"enabled": self.config.knowledge.enabled, "error": str(exc)}
         return data
 
     def channels(self) -> list[dict[str, Any]]:
-        return self.agent().channel_catalog()
+        return self.agent(include_knowledge=False).channel_catalog()
 
     def jobs(self) -> list[dict[str, Any]]:
         return self.db.list_jobs()
+
+    def recommendations(self) -> dict[str, Any]:
+        return build_recommendations(self.database_path, self.config)
 
     def applications(self) -> list[dict[str, Any]]:
         return self.db.list_applications()
 
     def events(self) -> list[dict[str, Any]]:
         return self.db.list_events()
+
+    def knowledge_status(self) -> dict[str, Any]:
+        return self.knowledge_service().status()
+
+    def knowledge_documents(self) -> list[dict[str, Any]]:
+        return self.knowledge_service().list_documents()
+
+    def import_knowledge_document(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.knowledge_service().import_payload(payload)
+
+    def fetch_knowledge_url(self, source: str, url: str) -> dict[str, Any]:
+        return self.knowledge_service().fetch_url(source, url)
+
+    def delete_knowledge_document(self, document_id: int) -> dict[str, Any]:
+        return self.knowledge_service().delete_document(document_id)
+
+    def retrieve_job_evidence(self, job_id: int, *, refresh: bool = True) -> dict[str, Any]:
+        service = self.knowledge_service()
+        job = self.db.get_job(job_id)
+        if job is None:
+            raise ValueError("岗位不存在")
+        config = self.config
+        hard_reasons = hard_filter(job, config)
+        if hard_reasons:
+            raise ValueError(f"岗位未通过硬规则，不检索社区情报：{'；'.join(hard_reasons)}")
+        if not refresh:
+            cached = service.evidence_for_job(job_id)
+            if cached is not None:
+                return cached
+        return service.retrieve_for_job(job, config).to_dict()
