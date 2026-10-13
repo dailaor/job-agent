@@ -23,7 +23,7 @@ flowchart TD
     KA --> L["双向评分、能力关系与策略排序"]
     L --> M["统一岗位池"]
     M --> N["跳转原始官网，由用户确认投递"]
-    N --> O["投递台账与审计记录"]
+    N --> O["求职进度：阶段与备注"]
 ```
 
 再次使用时，简历上传不是必填项；没有选择新文件就沿用 `candidate.resume_path` 指向的本地副本。选择新文件后，服务端只保留一个 `current.pdf` 或 `current.docx`，并把可提取文本写入 `current.txt`。新文件、文本和配置更新失败时会恢复旧版本。
@@ -43,6 +43,7 @@ flowchart TD
 | 修改本地 API | `src/job_agent/web.py` | 保持 JSON 错误结构 `{error, message}` |
 | 修改页面流程 | `src/job_agent/static/` | 无构建步骤；同时验证键盘、桌面和移动宽度 |
 | 修改数据表和台账 | `src/job_agent/database.py` | 迁移必须向前兼容已有本地数据库 |
+| 修改手工求职进度 | `database.py`、`service.py`、`web.py`、`static/app.js` | 与旧执行状态独立；补 `tests/test_progress.py`，不得触发真实投递 |
 | 修改便携包启动 | `src/job_agent/launcher.py`、`scripts/build_portable.ps1` | 用户数据固定写入程序旁的 `data/` |
 
 ## 分层关系
@@ -161,19 +162,21 @@ $env:PYTHONPATH='src'
 ## 智能推荐工作卡维护（2026-10-12）
 
 - 后端入口：`src/job_agent/recommendations.py`。可投性、能力、待遇、六组体验、理由/风险与证据分开生成；只读GET不允许偷偷调用付费模型、检索写入或外网。
-- 前端入口：`static/recommendations.js`；`app.js` 对接加载/导航；`index.html`和`styles.css`保留控制台风格。证据按钮打开对应details并聚焦出处。筛选结果数量由role=status宣读。
+- 前端入口：`static/recommendations.js` 负责高推荐单卡、左右切换、筛选和证据展开；`app.js` 对接加载/导航/进度记录，`index.html` 提供持久左右按钮，`commercial.css` 在 `styles.css` 后统一主题。证据按钮打开对应 details 并聚焦出处；卡片序号由 `role=status` 宣读。
+- 高推荐只取 `decision.status=recommend`，不使用历史综合分阈值。筛选或刷新后保留仍有效的当前岗位；边界禁用、单卡和空结果不越界，不用待核实卡凑数量。
 - 证据选择维护时必须覆盖组合学历、前/后置否定、跨样本冲突、面经中的出差、股票算法、日薪/月薪/仅薪资下限、同团队作用域、删帖/过期及12条上限下的direct优先。模型分数不能当录用概率。
 - 修改档案、偏好或导入/删除情报后，重新读取推荐；旧REJECTED、旧LLM评分及旧检索快照不能当当前事实。
 - 岗位池`#jobs-one-click-apply`保持disabled，未实现自动投递。不要把“生成计划”作为这个按钮的隐含行为。
-- 新增测试：`tests/test_recommendations.py`（27项）。完整后端套件当前85项；界面验收`node scripts/test_recommendations_ui.cjs`，需要可用Playwright和Edge，使用`NODE_PATH`指向现有安装，不为项目新增运行依赖。
+- 推荐测试：`tests/test_recommendations.py`；进度测试：`tests/test_progress.py`。界面验收 `node scripts/test_recommendations_ui.cjs`，需要可用 Playwright 和 Edge，使用 `NODE_PATH` 指向现有安装，不为项目新增运行依赖。当前版本验证结果以实际测试与发布记录为准，不沿用旧版本数量。
 - 合成预览：`scripts/preview_recommendations.py --port 9876`，数据只放`work/recommendation-preview/`，公司/岗位均有演示标签，不读取真实简历。截图和验收日志放`work/recommendation-review/`。
 - 当前`py -3.13`定位旧Python失败，维护者需用明确可用的Python可执行文件；测试执行环境使用Codex bundled Python。产品便携版不依赖全局Python。
 
-## 商业化视觉与公开发布（v0.2.0）
+## 视觉与公开发布
 
-用户确认决策信息完整后，按实际商业网站参考→三张生成效果图→选择横向工作卡→语义前端实现→独立代码/视觉复核的顺序重设计。选定效果图及提示在`docs/assets/design/recommendation-comp.png/json`，README实际截图在`docs/assets/readme/recommendations.png`和`recommendations-mobile.png`，不要把效果图冒充运行截图。
+v0.2.0 的森林绿效果图及提示在 `docs/assets/design/recommendation-comp.png/json`，仅保留为历史设计记录。v0.3.0-alpha 以用户确认的深海蓝＋冷灰白、单卡左右切换及现有代码为准，不将旧效果图作为当前规范。README 实际截图在 `docs/assets/readme/recommendations.png`、`recommendations-mobile.png`、`job-pool.png` 和 `progress.png`；截图中的岗位与记录使用合成演示数据，不读取用户私人配置。
 
-- `commercial.css`在旧`styles.css`之后加载，统一浅色导航/表单/按钮/岗位池并实现横向三分区卡片。更新视觉请维护同一组token，不再叠加多个主题文件。
+- `commercial.css` 在旧 `styles.css` 之后加载；主色 `--primary:#233b62`、背景 `--paper:#f5f7fa`，旧 `--green` / `--green-2` 仅作为蓝色主动作/焦点的兼容别名。正向 green、待核实 amber、错误 red 保留业务语义，不作主品牌色；更新时同步 `DESIGN.md` 与 `.impeccable/design.json`，不叠加主题文件。
+- `brand-icon.svg` 为卡片与勾的几何 SVG；`ui-icons.js` 提供同组功能图标和左右切换箭头，不使用字符或 Emoji 代替。
 - `ui-icons.js`是本机几何SVG图标，无新增运行依赖；`brand-icon.svg`保留本地品牌入口。
 - 多证据用单一编号入口，`data-proof-ids`保留所有关联ID，点击后展开并高亮同一结论的全部来源，不丢引用。
 - `cleanCopy`仅用于HTML格式源摘录：在inert template内去掉脚本/样式等不可见节点，提取文本后仍escape；岗位标题仍逐字转义。不要用innerHTML直接渲染招聘页正文。
@@ -181,3 +184,23 @@ $env:PYTHONPATH='src'
 - 截图先scrollTo0并等待布局，避免全页捕获中的sticky侧栏落在图片中间；1448×1086与效果图同尺寸核对，另验收1440/1280/390宽度。
 - v0.2.0本机85项后端+10组浏览器验收通过；成品测试还必须确认`commercial.css`/`ui-icons.js`可加载及实际浅色侧栏。发布前显式白名单stage，检查配置/简历/db未跟踪，README下载不要指向被忽略的outputs目录。
 - v0.2.1修正干净checkout的测试初始化：`work/`被Git忽略，推荐测试必须先自行mkdir再创建临时目录；不能把本机已有目录当作CI前提。发布验收应至少有一次不带任何ignored文件的源码测试。
+
+## 求职进度维护（v0.3.0-alpha）
+
+- 导航为智能推荐、全部岗位、求职进度、我的档案、设置。档案与设置共用原配置真相；渠道、情报、运行统计、运行记录和执行工具只在设置高级区访问，不删除旧功能数据。
+- `applications` 启动时检查并补齐四列：`recruitment_stage TEXT`、`progress_note TEXT NOT NULL DEFAULT ''`、`progress_source TEXT`、`progress_updated_at TEXT`。不要重建表、覆盖旧 `status`、时间、证据或外部 ID；重复启动迁移应幂等。
+- `GET /api/applications` 返回旧字段和有效进度字段。手工记录来源为 `manual`；旧状态映射来源为 `legacy_status`，不存在明确成功证据时显示待确认。完整合同见 [架构 API](ARCHITECTURE.md#9-本地-api)。
+- 新建/更新已有岗位记录使用 `POST /api/applications/manual`；编辑记录使用 `PUT /api/applications/<id>/progress`。`stage` 必须为八个阶段之一；`note` 是最多 2000 字的可选文本，省略保留原备注，空串清空；ID 必须为正整数且对象存在。
+- 同一 `job_id` 只保留一个 application。保存过程用数据库事务；内容未变时不重复追加事件。备注可能包含 HR 联系信息，不复制进审计 payload，事件只记录阶段、来源和是否有备注。
+- `progress_source=manual` 是旧执行队列的排除条件；不能只筛选 `status=待执行`。批次开始和外部写动作之前重新读取，防止执行等待期间用户接管记录；已在途操作的真实证据保留，但不覆盖手工阶段。
+- 最低检查：新库/旧库四列迁移、同岗位幂等记录、八阶段与非法输入、备注限长/保留/清空、旧状态保守映射、重启保留、并发录入、手工接管后禁止执行、在途证据保留。前端还需单卡边界、搜索/样本筛选、局部键盘、空高推荐、全部岗位完整性、进度创建与编辑、桌面与移动截图。
+- 保存档案与保存设置分别更新自己的配置范围；设置不得改写 `candidate.profile_source` 或把隐藏档案表单中的未保存修改一并提交。两者共用配置文件，但不共用字段写入范围。
+- v0.3.0-alpha：100 项后端回归通过；桌面/手机浏览器检查通过单卡翻页、筛选/刷新边界、全部岗位完整性、进度持久化与安全转义，独立代码与视觉复核无剩余 P1/P2。便携包在 PATH 不含 Python 的环境中通过空库首次启动及合成证据卡验收；未测试真实外网投递。
+
+## 独立前端演示发布（2026-10-13）
+
+- `node scripts/export_frontend_demo.cjs` 从正式 `static/` 生成多文件演示和 `outputs/JobAgent-frontend-demo.html`；演示接口与纯合成快照在 `examples/frontend-demo/`，不读取真实 `data/`、配置、简历或环境密钥。生成文件不进入 Git，只作为 Release 附件。
+- 演示必须在 `file://` 下验证：Windows 根路径会继承盘符，`/api/` 请求先直接识别再作 URL 解析；所有接口由浏览器内适配器响应，不请求后端或外网。
+- 单文件导出替换 CSS/JS 标签使用回调函数，不能把源码作为字符串 replacement，否则 `$$` 选择器会被改成 `$`。合成数据 UTF-8 存储，跨进程导出 JSON 若经过 Windows stdout 应使用 ASCII 转义或明确 UTF-8，禁止接受乱码/替代字符作为数据。
+- `node scripts/test_frontend_demo.cjs` 需要 Node Playwright 与可用浏览器。验收两个入口：中文显示、单卡翻页、证据展开、移动布局、进度持久化/安全转义、档案与设置写范围分离、零 HTTP(S) 请求和零页面错误。
+- README 必须区分固定演示与完整版：前者不能实际解析简历、采集、调用模型或投递，修改档案也不重算快照。资料只在演示专用浏览器存储中保存，存储被禁用时退化为内存。

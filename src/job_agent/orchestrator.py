@@ -341,14 +341,31 @@ class JobAgent:
             "planned": sum(int(item["planned"]) for item in plans),
         }
 
+    def _automatic_application(self, application_id: int, status: ApplicationStatus) -> dict[str, Any] | None:
+        """Recheck a queued snapshot immediately before an external action."""
+        application = self.db.get_application(application_id)
+        if (not application or application.get("progress_source") == "manual"
+                or application["status"] != status.value):
+            return None
+        return application
+
     async def execute(self, channel: str, *, live: bool = False) -> dict[str, Any]:
-        applications = self.db.list_applications(status=ApplicationStatus.PLANNED.value, channel=channel)
+        applications = self.db.list_applications(
+            status=ApplicationStatus.PLANNED.value, channel=channel, include_manual=False,
+        )
         results: list[dict[str, Any]] = []
+        if not applications:
+            if channel not in {"boss", "official"} and self.channel_registry.get(channel) is None:
+                raise ValueError(f"unknown channel: {channel}")
+            return {"channel": channel, "live": live, "processed": 0, "results": []}
         if channel == "boss":
             adapter = self.channel_registry.get("boss")
             if adapter is None or not adapter.ready:
                 message = "、".join(adapter.missing) if adapter else "未找到 BOSS 渠道配置"
                 for application in applications:
+                    application = self._automatic_application(int(application["id"]), ApplicationStatus.PLANNED)
+                    if application is None:
+                        continue
                     job = self.db.get_job(int(application["job_id"]))
                     result = ActionResult(ActionStatus.NEEDS_HUMAN, message, evidence=(job.apply_url or job.url) if job else "")
                     self._record_action(int(application["id"]), result, "boss_greeting", live=live)
@@ -357,6 +374,9 @@ class JobAgent:
             connector = adapter.connector_factory() if adapter.connector_factory else BossConnector(self.config.boss)
             try:
                 for application in applications:
+                    application = self._automatic_application(int(application["id"]), ApplicationStatus.PLANNED)
+                    if application is None:
+                        continue
                     job = self.db.get_job(int(application["job_id"]))
                     if job is None:
                         continue
@@ -375,6 +395,9 @@ class JobAgent:
                     pass
         elif channel == "official":
             for application in applications:
+                application = self._automatic_application(int(application["id"]), ApplicationStatus.PLANNED)
+                if application is None:
+                    continue
                 job = self.db.get_job(int(application["job_id"]))
                 if job is None:
                     continue
@@ -384,6 +407,8 @@ class JobAgent:
                 else:
                     connector = adapter.connector_factory()
                     try:
+                        if self._automatic_application(int(application["id"]), ApplicationStatus.PLANNED) is None:
+                            continue
                         submit = getattr(connector, "submit", None)
                         if not callable(submit):
                             result = ActionResult(ActionStatus.NEEDS_HUMAN, "该渠道只支持岗位发现，请跳转原始页面投递", evidence=job.apply_url or job.url)
@@ -404,6 +429,9 @@ class JobAgent:
             if adapter is None:
                 raise ValueError(f"unknown channel: {channel}")
             for application in applications:
+                application = self._automatic_application(int(application["id"]), ApplicationStatus.PLANNED)
+                if application is None:
+                    continue
                 job = self.db.get_job(int(application["job_id"]))
                 if job is None:
                     continue
@@ -412,6 +440,8 @@ class JobAgent:
                 else:
                     connector = adapter.connector_factory()
                     try:
+                        if self._automatic_application(int(application["id"]), ApplicationStatus.PLANNED) is None:
+                            continue
                         submit = getattr(connector, "submit", None)
                         if not callable(submit):
                             result = ActionResult(ActionStatus.NEEDS_HUMAN, "该扩展渠道只支持岗位发现，请跳转原始页面投递", evidence=job.apply_url or job.url)
@@ -464,11 +494,18 @@ class JobAgent:
         }.get(status, ApplicationStatus.FAILED)
 
     async def check_boss_replies(self, *, live_resume_send: bool = False) -> dict[str, Any]:
-        applications = self.db.list_applications(status=ApplicationStatus.AWAITING_REPLY.value, channel="boss")
+        applications = self.db.list_applications(
+            status=ApplicationStatus.AWAITING_REPLY.value, channel="boss", include_manual=False,
+        )
+        if not applications:
+            return {"checked": 0, "results": []}
         connector = BossConnector(self.config.boss)
         results: list[dict[str, Any]] = []
         try:
             for application in applications:
+                application = self._automatic_application(int(application["id"]), ApplicationStatus.AWAITING_REPLY)
+                if application is None:
+                    continue
                 job = self.db.get_job(int(application["job_id"]))
                 if job is None:
                     continue
@@ -476,7 +513,8 @@ class JobAgent:
                 item: dict[str, Any] = {"application_id": application["id"], "reply": result.to_dict()}
                 if result.status is ActionStatus.CONFIRMED:
                     self.db.update_application(int(application["id"]), ApplicationStatus.HR_REPLIED, evidence=result.evidence)
-                    if self.config.preferences.auto_send_resume_after_reply:
+                    if (self.config.preferences.auto_send_resume_after_reply
+                            and self._automatic_application(int(application["id"]), ApplicationStatus.HR_REPLIED) is not None):
                         resume = await connector.send_resume(
                             job, self.config.candidate.resume_path,
                             greeting=str(application.get("greeting") or ""), live=live_resume_send,
@@ -494,6 +532,8 @@ class JobAgent:
         application = self.db.get_application(application_id)
         if not application or application["channel"] != "boss":
             raise ValueError("BOSS application not found")
+        if application.get("progress_source") == "manual":
+            raise ValueError("手工进度记录不能由自动执行器发送简历")
         if application["status"] != ApplicationStatus.HR_REPLIED.value:
             raise ValueError("Resume can only be sent after an effective HR reply")
         job = self.db.get_job(int(application["job_id"]))
@@ -501,6 +541,8 @@ class JobAgent:
             raise ValueError("Job not found")
         connector = BossConnector(self.config.boss)
         try:
+            if self._automatic_application(application_id, ApplicationStatus.HR_REPLIED) is None:
+                raise ValueError("投递记录已变更，请重新确认；手工进度不能由自动执行器发送简历")
             result = await connector.send_resume(
                 job, self.config.candidate.resume_path,
                 greeting=str(application.get("greeting") or ""), live=live,
@@ -517,10 +559,17 @@ class JobAgent:
     def check_receipts(self) -> dict[str, Any]:
         if not self.config.mail.get("enabled", False):
             return {"checked": 0, "message": "邮件回执检查未启用", "results": []}
+        applications = self.db.list_applications(
+            status=ApplicationStatus.OFFICIAL_SUBMITTED.value, channel="official", include_manual=False,
+        )
+        if not applications:
+            return {"checked": 0, "results": []}
         checker = ImapReceiptChecker(self.config.mail)
-        applications = self.db.list_applications(status=ApplicationStatus.OFFICIAL_SUBMITTED.value, channel="official")
         results: list[dict[str, Any]] = []
         for application in applications:
+            application = self._automatic_application(int(application["id"]), ApplicationStatus.OFFICIAL_SUBMITTED)
+            if application is None:
+                continue
             since = datetime.fromisoformat(str(application["created_at"]).replace("Z", "+00:00"))
             receipt = checker.find(str(application["company"]), str(application["title"]), since)
             if receipt.matched:

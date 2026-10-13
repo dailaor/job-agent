@@ -38,14 +38,17 @@ async function launchAndCheck(withFixtures) {
     }
     assert(response?.ok, `Packaged server unavailable: ${logs}`);
     const payload = await response.json();
-    assert.equal(payload.items.length, withFixtures ? 3 : 0);
+    assert.equal(payload.items.length, withFixtures ? 4 : 0);
+    if (withFixtures) assert.equal(payload.items.filter(item => item.decision.status === 'recommend').length, 2);
     const markup = await (await fetch(address)).text();
     assert(markup.includes('view-recommendations'));
-    assert(markup.includes('RECOMMENDATION-CARDS-20261012'));
+    assert(markup.includes('recommendation-carousel'));
+    assert(markup.includes('progress-dialog'));
     const script = await (await fetch(`${address}/recommendations.js`)).text();
     assert(script.includes('window.Recommendations'));
     const theme = await (await fetch(`${address}/commercial.css`)).text();
-    assert(theme.includes('--green: #1b5d4b'));
+    assert(theme.includes('--primary: #233b62'));
+    assert(theme.includes('--paper: #f5f7fa'));
     const icons = await (await fetch(`${address}/ui-icons.js`)).text();
     assert(icons.includes('window.JobIcons'));
     assert(existsSync(join(dataDir, 'config.json')), 'Fresh package must create its config');
@@ -55,15 +58,22 @@ async function launchAndCheck(withFixtures) {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(address, {waitUntil: 'networkidle'});
     assert.equal(await page.locator('#page-title').textContent(), '智能推荐');
-    assert.equal(await page.locator('.sidebar').evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(241, 247, 244)');
+    assert.equal(await page.locator('.sidebar').evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(240, 243, 248)');
     if (withFixtures) {
-      assert.equal(await page.locator('.job-decision-card').count(), 2);
+      assert.equal(await page.locator('.job-decision-card').count(), 1);
+      assert.equal(await page.locator('#recommendation-order').textContent(), '1 / 2');
+      await page.locator('#recommendation-next').click();
+      assert.equal(await page.locator('#recommendation-order').textContent(), '2 / 2');
+      assert(await page.locator('#recommendation-next').isDisabled());
+      await page.locator('#recommendation-prev').click();
       await page.locator('.proof-link').first().click();
       assert((await page.evaluate(() => document.activeElement.id)).startsWith('proof-'));
     } else {
-      assert((await page.locator('#recommendation-results').textContent()).includes('候选清单'));
+      assert((await page.locator('#recommendation-results').textContent()).includes('暂无高推荐岗位'));
+      assert(await page.locator('#recommendation-prev').isDisabled());
+      assert(await page.locator('#recommendation-next').isDisabled());
     }
-    await page.getByRole('button', {name: '岗位池', exact: true}).click();
+    await page.locator('#nav').getByRole('button', {name: '全部岗位', exact: true}).click();
     assert(await page.locator('#jobs-one-click-apply').isDisabled());
     assert.deepEqual(errors, []);
     return {phase: withFixtures ? 'synthetic cards and evidence' : 'fresh launch and empty state', passed: true, port};

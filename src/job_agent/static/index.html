@@ -9,14 +9,8 @@
   <link rel="stylesheet" href="/commercial.css">
 </head>
 <body>
-  <!-- RECOMMENDATION-CARDS-20261012
-  THESIS: 让用户以可投门槛、待遇、工作体验和证据决定下一步。
-  OWN-WORLD: 浅色导航与暖白阅读面，森林绿动作，薄荷读数与琥珀待核实状态。
-  STORY: 先读理由和风险，再看六组体验，点证据核对原文，进入原岗位。
-  FIRST VIEWPORT: 208px左导航，标题/动作与紧凑筛选，横向岗位卡：身份、三项读数、理由/风险/六体验三分区、展开证据。
-  FORM: 可信招聘顾问工作台；seed 0fd02424候选7，用户委托自主选择comp-2作为图片先行基准。
-  FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
-  -->
+  <!-- High-recommendation single-card carousel; navy/cool-white palette approved by user.
+       All jobs remain in the pool. Manual progress never authorizes external submission. -->
   <div class="shell">
     <aside class="sidebar">
       <div class="brand">
@@ -25,12 +19,10 @@
       </div>
       <nav id="nav">
         <button class="nav-item active" data-view="recommendations" aria-current="page">智能推荐</button>
-        <button class="nav-item" data-view="overview">总览</button>
-        <button class="nav-item" data-view="jobs">岗位池</button>
-        <button class="nav-item" data-view="applications">投递台账</button>
-        <button class="nav-item" data-view="knowledge">岗位情报库</button>
-        <button class="nav-item" data-view="config">配置</button>
-        <button class="nav-item" data-view="audit">审计日志</button>
+        <button class="nav-item" data-view="jobs">全部岗位</button>
+        <button class="nav-item" data-view="applications">求职进度</button>
+        <button class="nav-item" data-view="config">我的档案</button>
+        <button class="nav-item" data-view="settings">设置</button>
       </nav>
       <div class="safety-card">
         <span class="pulse"></span>
@@ -42,7 +34,6 @@
       <header>
         <div>
           <h1 id="page-title" tabindex="-1">智能推荐</h1>
-          <p class="page-description" id="page-description">看清值得投的理由，也看清要先确认的风险。</p>
         </div>
         <div class="header-actions">
           <span id="last-refresh" class="muted"></span>
@@ -55,19 +46,21 @@
         <div class="recommendation-overview" id="recommendation-overview" aria-live="polite"></div>
         <div class="recommendation-filters" role="search" aria-label="筛选推荐岗位">
           <label class="recommendation-search"><span class="sr-only">搜索推荐</span><input id="recommendation-search" type="search" placeholder="岗位、公司或地点" autocomplete="off"></label>
-          <label><span>下一步</span><select id="recommendation-status"><option value="">全部候选</option><option value="recommend">优先了解</option><option value="verify">先核实信息</option></select></label>
           <label class="recommendation-check"><input id="recommendation-evidence-only" type="checkbox"><span>有同团队体验样本</span></label>
           <button class="button ghost" id="recommendation-reset" type="button" hidden>清除筛选</button>
         </div>
-        <p class="recommendation-order" id="recommendation-order" role="status" aria-live="polite" aria-atomic="true">先核对门槛，再优先展示与本岗位直接相关的决策证据。</p>
-        <div id="recommendation-results" class="recommendation-grid" aria-busy="true"></div>
+        <p class="recommendation-order" id="recommendation-order" role="status" aria-live="polite" aria-atomic="true"></p>
+        <div id="recommendation-carousel" class="recommendation-carousel" tabindex="0" role="region" aria-label="高推荐岗位卡片">
+          <button id="recommendation-prev" class="carousel-arrow" type="button" aria-label="上一张推荐卡" aria-controls="recommendation-results" disabled>‹</button>
+          <div class="carousel-stage"><div id="recommendation-results" class="recommendation-grid" aria-busy="true"></div></div>
+          <button id="recommendation-next" class="carousel-arrow" type="button" aria-label="下一张推荐卡" aria-controls="recommendation-results" disabled>›</button>
+        </div>
       </section>
 
       <section class="view" id="view-overview">
         <div class="hero">
           <div>
-            <h2>让每一次投递都更值得。</h2>
-            <p>从已适配渠道整理岗位，在智能推荐中查看可投门槛、待遇、工作体验，以及支持每个理由的证据；在岗位池管理全部机会与投递计划。</p>
+            <h2>运行统计</h2>
           </div>
           <div class="hero-actions">
             <button class="button light" data-action="seed">体验演示数据</button>
@@ -109,7 +102,7 @@
       <section class="view" id="view-jobs">
         <article class="panel">
           <div class="panel-head split">
-            <div><h3>统一岗位池</h3><p class="panel-help">不同渠道的岗位汇总展示，保留来源字段，并按渠道优先级跨渠道去重。</p></div>
+            <div><h3>全部岗位</h3></div>
             <div class="toolbar">
               <select id="job-status-filter"><option value="">全部状态</option></select>
               <input id="job-search" placeholder="搜索岗位、公司或地点">
@@ -120,23 +113,15 @@
             </div>
           </div>
           <div id="run-result" class="run-result" hidden></div>
-          <div class="table-wrap"><table><thead><tr><th>岗位 / 公司</th><th>来源渠道</th><th>投递策略</th><th>人匹配岗位</th><th>岗位满足人</th><th>状态</th><th>下一步</th></tr></thead><tbody id="jobs-body"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>岗位 / 公司</th><th>来源渠道</th><th>推荐度</th><th>投递策略</th><th>人匹配岗位</th><th>岗位满足人</th><th>状态</th><th>操作</th></tr></thead><tbody id="jobs-body"></tbody></table></div>
         </article>
       </section>
 
       <section class="view" id="view-applications">
-        <div class="action-strip">
-          <div><strong>执行区</strong><span>演练不会改变招聘网站状态；真实执行会发送开场白或提交官网表单。</span></div>
-          <div>
-            <button class="button ghost" data-action="dry-run">执行演练</button>
-            <button class="button danger" data-action="live-run">真实执行</button>
-            <button class="button ghost" data-action="replies">检查 HR 回复</button>
-            <button class="button ghost" data-action="receipts">检查邮件回执</button>
-          </div>
-        </div>
+        <div class="progress-summary" id="progress-summary"></div>
         <article class="panel">
-          <div class="panel-head"><div><h3>统一投递台账</h3></div></div>
-          <div class="table-wrap"><table><thead><tr><th>岗位 / 公司</th><th>渠道</th><th>策略</th><th>状态</th><th>更新时间</th><th>证据 / 异常</th></tr></thead><tbody id="applications-body"></tbody></table></div>
+          <div class="panel-head split"><h3>求职记录</h3><div class="progress-toolbar"><input id="progress-search" type="search" aria-label="搜索求职记录" placeholder="岗位或公司"><select id="progress-stage-filter" aria-label="筛选求职阶段"><option value="">全部阶段</option></select><button class="button primary" id="add-progress" type="button">记录进度</button></div></div>
+          <div class="table-wrap"><table><thead><tr><th>岗位 / 公司</th><th>渠道</th><th>求职阶段</th><th>更新时间</th><th>备注 / 回执</th><th>操作</th></tr></thead><tbody id="applications-body"></tbody></table></div>
         </article>
       </section>
 
@@ -209,10 +194,9 @@
       <section class="view" id="view-config">
         <article class="panel config-intro">
           <div>
-            <h3>这里决定 Agent 找什么、从哪里找、哪些岗位不能投，以及可以执行到哪一步</h3>
-            <p>日常用户只需要填写下面的表单。官网 API 字段映射、页面选择器等开发配置保留在“高级 JSON”中。</p>
+            <h3>档案与求职偏好</h3>
           </div>
-          <button class="button primary" id="save-basic-config">保存用户配置</button>
+          <button class="button primary" id="save-basic-config">保存档案</button>
         </article>
 
         <div class="config-sections">
@@ -275,6 +259,12 @@
             </div>
           </article>
 
+        </div>
+      </section>
+
+      <section class="view" id="view-settings">
+        <article class="panel config-intro"><h3>渠道与执行设置</h3><button class="button primary" id="save-settings-config">保存设置</button></article>
+        <div class="config-sections">
           <article class="panel config-card" id="channel-settings">
             <div class="panel-head"><h3>抓取渠道</h3><p class="panel-help">这里负责长期配置渠道；每次抓取时再从已启用渠道中选择本次要运行的几个。</p></div>
             <div class="channel-config-block">
@@ -314,12 +304,19 @@
               <div class="editor-actions"><button class="button primary" id="save-json-config">验证并保存 JSON</button></div>
             </div>
           </details>
+          <details class="panel advanced-config">
+            <summary><strong>高级工具</strong><span>展开</span></summary>
+            <div class="advanced-body">
+              <div class="toolbar"><button class="button ghost" data-open-view="knowledge">岗位情报库</button><button class="button ghost" data-open-view="overview">运行统计</button><button class="button ghost" data-open-view="audit">运行记录</button></div>
+              <div class="action-strip"><div><strong>执行工具</strong><span>真实执行会改变招聘网站状态，需要再次确认。</span></div><div><button class="button ghost" data-action="dry-run">执行演练</button><button class="button danger" data-action="live-run">真实执行</button><button class="button ghost" data-action="replies">检查 HR 回复</button><button class="button ghost" data-action="receipts">检查邮件回执</button></div></div>
+            </div>
+          </details>
         </div>
       </section>
 
       <section class="view" id="view-audit">
         <article class="panel">
-          <div class="panel-head"><div><h3>不可省略的决策证据</h3></div></div>
+          <div class="panel-head split"><h3>运行记录</h3><button class="button ghost" data-open-view="settings">返回设置</button></div>
           <div id="events" class="timeline"></div>
         </article>
       </section>
@@ -327,6 +324,20 @@
   </div>
 
   <div id="toast" role="status"></div>
+
+  <dialog id="progress-dialog" aria-labelledby="progress-dialog-title">
+    <form id="progress-form" class="dialog-body">
+      <div class="dialog-heading"><h3 id="progress-dialog-title">记录求职进度</h3><button class="icon-button" id="close-progress" type="button" aria-label="关闭">×</button></div>
+      <div class="form-grid">
+        <label><span>岗位</span><select id="progress-job" required></select></label>
+        <label><span>求职阶段</span><select id="progress-stage" required></select></label>
+        <label><span>备注</span><textarea id="progress-note" rows="4" maxlength="2000" placeholder="例如：面试时间、待确认事项、HR 联系情况"></textarea></label>
+      </div>
+      <p class="privacy-note">仅在本机保存记录，不会向招聘平台提交或发送消息。</p>
+      <p id="progress-error" class="inline-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button class="button ghost" id="cancel-progress" type="button">取消</button><button class="button primary" id="save-progress" type="submit">保存记录</button></div>
+    </form>
+  </dialog>
 
   <dialog id="task-dialog" class="task-dialog" aria-labelledby="task-title">
     <div class="wizard-shell">

@@ -198,6 +198,26 @@ class AgentService:
     def applications(self) -> list[dict[str, Any]]:
         return self.db.list_applications()
 
+    @staticmethod
+    def _progress_payload(payload: Any) -> tuple[str, str | None]:
+        if not isinstance(payload, dict):
+            raise ValueError("请求内容必须是 JSON 对象")
+        if "note" in payload and not isinstance(payload["note"], str):
+            raise ValueError("进度备注必须是文本")
+        return payload["stage"], payload.get("note")
+
+    def record_manual_application(self, payload: dict[str, Any]) -> dict[str, Any]:
+        stage, note = self._progress_payload(payload)
+        database = self.db
+        application_id = database.record_manual_application(payload["job_id"], stage, note)
+        return database.get_application(application_id) or {}
+
+    def update_application_progress(self, application_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+        stage, note = self._progress_payload(payload)
+        database = self.db
+        database.update_application_progress(application_id, stage, note)
+        return database.get_application(application_id) or {}
+
     def events(self) -> list[dict[str, Any]]:
         return self.db.list_events()
 

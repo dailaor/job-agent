@@ -13,6 +13,8 @@ window.JobIcons = (() => {
     external: '<path d="M14 3h7v7M21 3l-9 9M10 3H3v18h18v-7"/>',
     arrow: '<path d="M4 12h16m-6-6 6 6-6 6"/>',
     chevron: '<path d="m9 5 7 7-7 7"/>',
+    chevronLeft: '<path d="m15 5-7 7 7 7"/>',
+    chevronRight: '<path d="m9 5 7 7-7 7"/>',
     check: '<path d="m5 12 4 4L19 6"/>',
     warning: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/>',
     shield: '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/>',

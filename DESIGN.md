@@ -1,27 +1,27 @@
 ---
 name: "职来 Agent"
-description: "浅色工作区、森林绿动作与证据驱动的商业求职界面"
+description: "深海蓝与冷灰白的本地求职工作台"
 colors:
-  ink: "#172b28"
-  muted: "#64746f"
-  line: "#e2e9e5"
-  paper: "#f7f9f7"
+  ink: "#1c2c45"
+  muted: "#5f6f84"
+  line: "#dfe5ee"
+  paper: "#f5f7fa"
   card: "#ffffff"
-  green: "#1b5d4b"
-  green-2: "#26765a"
+  primary: "#233b62"
+  focus: "#315984"
   orange: "#a96313"
   red: "#a34535"
-  blue: "#406c89"
-  nav-background: "#f1f7f4"
-  nav-active: "#dcefe6"
-  nav-text: "#374d44"
-  readout-mint: "#eff8f3"
+  blue: "#406c9b"
+  nav-background: "#f0f3f8"
+  nav-active: "#dfe9f7"
+  nav-text: "#40516b"
+  readout-blue: "#eef3fa"
   readout-amber: "#fcf7ed"
   positive-background: "#dff3e9"
   positive-text: "#19644b"
   caution-background: "#fff0d4"
   caution-text: "#8a5816"
-  work-card-line: "#e1e9e3"
+  work-card-line: "#dfe5ee"
 typography:
   headline:
     fontFamily: "\"Segoe UI Variable Text\", \"Microsoft YaHei UI\", Aptos, sans-serif"
@@ -66,6 +66,7 @@ typography:
 rounded:
   control: "8px"
   navigation: "9px"
+  carousel: "10px"
   readout: "9px"
   badge: "5px"
   status: "999px"
@@ -82,7 +83,7 @@ spacing:
   24: "24px"
 components:
   button-primary:
-    backgroundColor: "{colors.green}"
+    backgroundColor: "{colors.primary}"
     textColor: "{colors.card}"
     typography: "{typography.action}"
     rounded: "{rounded.control}"
@@ -123,8 +124,14 @@ components:
     rounded: "{rounded.work-card}"
     padding: "21px 22px 0"
   evidence-group:
-    textColor: "#314d3c"
+    textColor: "{colors.primary}"
     padding: "14px 0 10px"
+  carousel-arrow:
+    backgroundColor: "{colors.card}"
+    textColor: "{colors.primary}"
+    rounded: "{rounded.carousel}"
+    width: "46px"
+    height: "52px"
 ---
 
 # Design System: 职来 Agent
@@ -133,16 +140,16 @@ components:
 
 **Creative North Star: "可信招聘顾问工作台"**
 
-“可信招聘顾问工作台”以浅灰绿导航、暖白内容面、森林绿动作和克制的薄荷／琥珀状态建立可信、易扫描的求职界面。品牌仍为职来 Agent；标题、事实、未知信息和证据入口各有明确层级，信息密度服务于用户核对下一步。
+“可信招聘顾问工作台”以深海蓝动作、冷灰白工作区、白色阅读面与浅蓝选中状态组织求职操作。品牌仍为职来 Agent；标题、事实、未知信息和证据入口各有明确层级，色彩与文字服务于核对而不是宣传。
 
-本轮视觉重设计已由用户授权并委托自主选择，执行参考为[精致推荐工作台效果图](docs/assets/design/recommendation-comp.png)，其[生成记录](docs/assets/design/recommendation-comp.json)保留提示与选择依据。实际界面以 [commercial.css](src/job_agent/static/commercial.css) 在 [styles.css](src/job_agent/static/styles.css) 之后的覆盖结果为准：文字、卡片、图标和控件均为语义 HTML/CSS 或平面 SVG，不将效果图栅格化为页面。
+本轮是用户明确指定配色、单卡切换与页面职责的定向迭代。实际界面以 [commercial.css](src/job_agent/static/commercial.css) 在 [styles.css](src/job_agent/static/styles.css) 之后的结果为准。品牌为卡片与勾的几何 SVG，控件为语义 HTML/CSS；[森林绿效果图](docs/assets/design/recommendation-comp.png)及其[生成记录](docs/assets/design/recommendation-comp.json)仅保留为历史来源，不再作为当前规范。
 
 **Key Characteristics:**
 
-- 浅色工作区与森林绿主动作，状态用文字配合薄荷或琥珀表达。
-- 平面品牌 SVG 与同组细线 SVG 图标，无假公司 Logo。
+- 深海蓝主动作、冷灰白背景与浅蓝选中面；green、amber、red 仅表达明确业务状态。
+- 卡片与勾的平面品牌 SVG 与同组细线功能图标，无假公司 Logo。
 - 内容容器平整、细边框分组，卡片高度由实际数据决定。
-- 推荐页采用单列横向工作卡；其他页面沿用自身任务布局。
+- 推荐页一次展示一张工作卡、两侧箭头切换；全部岗位为完整列表，求职进度为阶段记录。
 
 ## Colors
 
@@ -150,14 +157,13 @@ components:
 
 ### Primary
 
-- **森林绿 / 焦点中绿**（`green` / `green-2`）：主 CTA、链接及可见焦点。
-- **可了解标签字**（`positive-text`）：与可了解文字状态搭配。
+- **深海蓝 / 焦点蓝**（`primary` / `focus`）：主 CTA、链接及可见焦点。CSS 旧 `--green` / `--green-2` 是其兼容别名，不表示品牌仍为绿。
 
 ### Secondary
 
-- **导航薄荷 / 薄荷读数底**（`nav-active` / `readout-mint`）：选中入口与可推进工作卡读数。
+- **导航浅蓝 / 蓝灰读数底**（`nav-active` / `readout-blue`）：选中入口与工作卡读数，不编码录用概率。
 - **琥珀读数底**（`readout-amber`）：需核实工作卡读数。
-- **可了解 / 待核实标签底**（`positive-background` / `caution-background`）：与对应文字配对。
+- **正向绿 / 待核实琥珀标签**（`positive-background`、`positive-text` / `caution-background`、`caution-text`）：与明确状态文字配对。
 
 ### Tertiary
 
@@ -166,11 +172,11 @@ components:
 
 ### Neutral
 
-- **暖白背景、白色卡面、导航浅灰绿**（`paper`、`card`、`nav-background`）：区分工作区与阅读面。
-- **墨绿黑、辅助灰绿、导航文字**（`ink`、`muted`、`nav-text`）：正文及次级信息。
-- **分隔浅灰绿 / 工作卡边框**（`line` / `work-card-line`）：平面容器与信息分组。
+- **冷灰白背景、白色卡面、导航冷灰**（`paper`、`card`、`nav-background`）：区分工作区与阅读面。
+- **墨蓝、辅助蓝灰、导航文字**（`ink`、`muted`、`nav-text`）：正文及次级信息。
+- **分隔冷灰 / 工作卡边框**（`line` / `work-card-line`）：平面容器与信息分组。
 
-**The Evidence Tone Rule.** 薄荷表达可继续了解，琥珀表达需先核实；两者始终配有明确文字，不能把色彩当作录用概率或保证。
+**The Evidence Tone Rule.** 主品牌蓝不替代业务状态；正向绿、待核实琥珀与错误红始终配明确文字，不能把色彩当作录用概率或保证。
 
 ## Typography
 
@@ -196,9 +202,9 @@ components:
 
 桌面浅侧栏宽（248px），内容区内边距（26px 28px 42px）。在工作区断点（1180px）侧栏收窄（208px），内容区内边距改为（24px）。移动断点（720px）侧栏进入文档流，导航横向滚动，内容区内边距（20px 14px 32px）。既有配置和双栏面板仍在其断点（1120px）转为单列，表格保留横向滚动容器。
 
-推荐页使用单列横向卡，间距（18px），没有固定卡片高度。桌面卡片上方为岗位身份与状态／原岗位动作，其下为三项读数及提交资格说明；正文是理由、风险、六组体验三分区。实际理由与证据句长于效果图示例，保留自然换行与内容高度。
+推荐页一次显示一张高推荐工作卡，没有固定卡片高度。桌面轮播为左按钮（46px）、自适应中卡、右按钮（46px），列间距（12px）；箭头随长卡阅读保持可访问。卡片上方为岗位身份与状态／原岗位动作，其下为三项读数及提交资格说明；正文是理由、风险、六组体验三分区。理由与证据保留自然换行，不以历史效果图高度限制内容。
 
-在（1180px）内，体验区移到理由／风险下方，六组体验排为三列；在（720px）内，身份与动作分行、读数纵向排列、理由和风险依序排列，体验保持两列。展开依据区继续容纳完整事实、来源和作用域。此编排只属于推荐页，其他页面按原任务布局保留。
+在（1180px）内，体验区移到理由／风险下方，六组体验排为三列；在（720px）内，左右按钮各（30px）、列间距（6px），身份与动作分行、读数纵向排列、理由和风险依序排列，体验保持两列；（380px）以下体验为单列。展开依据区继续容纳完整事实、来源和作用域。求职进度用简短统计、筛选与记录表格，不复用推荐三分区。
 
 ## Elevation & Depth
 
@@ -206,8 +212,8 @@ components:
 
 ### Shadow Vocabulary
 
-- **提示消息**（`box-shadow: 0 5px 20px rgb(23 48 36 / 5%)`）：当前 `--shadow`。
-- **模态对话框**（`box-shadow: 0 30px 80px rgba(20, 35, 27, .28)`）：既有浮层样式。
+- **提示消息**（`box-shadow: 0 5px 20px rgb(28 44 69 / 6%)`）：当前 `--shadow`。
+- **模态对话框**（`box-shadow: 0 30px 80px rgb(20 35 59 / 28%)`）：浮层样式。
 
 **The Flat Workspace Rule.** 导航、推荐卡、旧面板、指标卡与总览主区保持平面；只有提示消息与模态对话框保留浮层阴影。
 
@@ -215,15 +221,15 @@ components:
 
 控件圆角（8px）、导航与读数圆角（9px）、工作卡圆角（14px）形成克制层级。旧面板保留较大的圆角（16px），模态对话框为（18px）。通用小标签改为紧凑圆角（6px），推荐标题附近的演示标签为（5px），行动状态为胶囊。公司标记采用首字圆形，不伪装成公司 Logo。
 
-品牌为本地平面叶形 SVG；功能图标来自 [ui-icons.js](src/job_agent/static/ui-icons.js)，统一（24×24 viewBox）、线宽（1.7）、圆线端点及 `currentColor`。实际显示尺寸随导航、按钮和体验标签调整，不引入远程图标字体。
+品牌为本地卡片与勾的几何 SVG；功能图标来自 [ui-icons.js](src/job_agent/static/ui-icons.js)，统一（24×24 viewBox）、线宽（1.7）、圆线端点及 `currentColor`。左右箭头也使用同组 SVG，不以字符替代；实际尺寸随导航、按钮和体验标签调整，不引入远程图标字体。
 
 ## Components
 
 ### Buttons
 
-- **Primary:** 森林绿实色与白字，最小高度（41px），内边距已记录；悬停使用更深森林绿。
-- **Secondary / Ghost:** 白底细边框，悬停浅灰绿；图标与文字水平排列。
-- **State:** 背景和边框过渡（160ms ease），无上移或悬浮阴影；焦点为实色中绿轮廓（2px，外偏移 3px）。
+- **Primary:** 深海蓝实色与白字，最小高度（41px），内边距已记录；悬停使用更深蓝。
+- **Secondary / Ghost:** 白底细边框，悬停浅蓝灰；图标与文字水平排列。
+- **State:** 背景和边框过渡（160ms ease），无上移或悬浮阴影；焦点为实色蓝轮廓（2px，外偏移 3px）。
 - **Other variants:** 既有强调、危险、深底浅色与禁用按钮按业务职责保留；未开放入口使用明确禁用文案。
 
 ### Inputs / Fields
@@ -232,7 +238,7 @@ components:
 
 ### Navigation
 
-浅灰绿底、薄荷选中面与线性图标；桌面项最小高度（50px），移动项（38px）。当前页同时用较重字重与 `aria-current="page"` 表达；配置入口前的分隔线不改变页面顺序。移动导航可横向滚动。
+冷灰底、浅蓝选中面与线性图标；桌面项最小高度（50px），移动项（38px）。当前页同时用较重字重与 `aria-current="page"` 表达；设置低频入口前有分隔线。移动导航可横向滚动，主导航名称与实际页面职责一致。
 
 ### Chips
 
@@ -240,7 +246,7 @@ components:
 
 ### Cards / Containers
 
-旧面板、总览和配置保留 DOM 与任务行为，统一为平面细边框表面；总览主区改为实色森林绿。推荐工作卡内边距（21px 22px 0），移动宽度（17px 16px 0），标题、正文和读数随内容换行。没有与效果图绑定的固定高度。
+旧面板、运行统计和设置保留任务行为，统一为平面细边框表面；运行统计主区为实色深海蓝。推荐工作卡内边距（21px 22px 0），移动宽度（17px 14px 0），标题、正文和读数随内容换行。没有与效果图绑定的固定高度。
 
 ### Recommendation Work Card & Evidence
 
@@ -250,16 +256,22 @@ components:
 
 减少动态偏好沿用既有覆盖规则；新的按钮与展开箭头仅使用（160ms ease）状态过渡。
 
+### Carousel & Progress
+
+轮播左右按钮有上一张／下一张可访问名称、明确焦点和边界禁用态，不依赖卡片内容生成或移除。顺序状态使用简短序号；没有高推荐结果时显示空结果，不在卡片外添加重复介绍句。键盘左右切换局限于轮播区域，不影响文本输入。
+
+求职进度以阶段、来源、更新时间与备注表达事实；统计用平面文字分组，筛选与表格共用现有控件。记录弹窗宽度随屏幕收缩，保存失败保留输入并显示错误。手工记录与真实投递分离提示属于必要边界，不能作为“冗余文案”删除。
+
 ## Do's and Don'ts
 
 ### Do:
 
-- Do 优先使用当前覆盖样式的森林绿、暖白、浅导航与文字层级。
+- Do 优先使用当前覆盖样式的深海蓝、冷灰白、浅蓝选中面与文字层级。
 - Do 让长标题、理由、风险和来源按内容换行，卡片自然增高。
 - Do 保留六组体验、待核实文案、可展开证据和可见键盘焦点。
 
 ### Don't:
 
-- Don't 恢复深色侧栏、旧推荐双列长卡或卡片悬浮投影。
+- Don't 恢复森林绿主品牌、树苗图标、旧推荐双列长卡或卡片悬浮投影。
 - Don't 把效果图当成网页背景，或把效果图示例文案与固定高度当作真实数据约束。
 - Don't 把推荐页三分区推广为所有页面模板，或添加虚假 Logo、匹配概率和确定性结论。

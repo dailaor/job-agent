@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "local-job-agent"
-version = "0.2.1"
+version = "0.3.0"
 description = "A local-first, fixed-channel job search and application agent."
 readme = "README.md"
 requires-python = ">=3.11"

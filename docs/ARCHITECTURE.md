@@ -12,7 +12,8 @@
 - 招聘网站通过固定白名单 Connector 接入；入口页可访问不等于已获得真实岗位。
 - 默认只把用户带到原始岗位页，由用户确认并完成最终提交。
 - BOSS 浏览器操作、官网表单执行和 IMAP 回执属于源码实验能力；基础便携包不包含 Playwright/Chromium。
-- LLM/BYOK 评分、浏览器扩展、自动登录和验证码处理尚未实现；当前规则评分故意不使用 RAG 证据改分。
+- 可选 DeepSeek BYOK Judge 已接在评分端口；当前规则评分仍不使用 RAG 证据改分。浏览器扩展、自动登录和验证码处理不属于稳定已实现能力。
+- 用户主导航是智能推荐、全部岗位、求职进度、我的档案；设置下置，实验执行、情报、运行统计和运行记录保留为高级入口。
 
 ### 当前能力与预留能力
 
@@ -22,12 +23,14 @@
 | 固定渠道岗位发现 | 已实现 | `ChannelRegistry` + 各 Connector |
 | 硬规则、双向规则评分和策略队列 | 已实现 | `matching.py` + `JobAgent.plan()` |
 | SQLite 台账、渠道健康度和审计事件 | 已实现 | `database.py` |
+| 高推荐单卡与完整岗位列表 | 已实现 | `recommendations.py` + `static/recommendations.js`；当前规则推荐与历史评分独立 |
+| 手工求职阶段与备注 | 已实现 | 四个独立进度字段 + `AgentService`；不授权任何招聘平台写操作 |
 | 岗位情报准入、切块、向量存储和两路检索 | 已实现 | `knowledge/*` + 独立知识表 |
 | 牛客单篇公开页 / 小红书可见正文导入 | 已实现、有界 | 不搜索、不翻页、不绕过登录或风控 |
 | 最终官网跳转 | 已实现 | 前端读取岗位原始 URL |
 | BOSS/官网真实写操作 | 实验性、默认关闭 | 显式 `live=true`；不确定结果转人工 |
 | IMAP 回执识别 | 实验性、默认关闭 | `receipts.py`；密码只读环境变量 |
-| LLM/BYOK 匹配 | 规划中 | 已有 `ScoringPort` 和 `EvidenceBundle` 接口；实现仍需结构化模型适配器 |
+| DeepSeek BYOK 匹配 | 已实现、可选 | `ScoringPort` + `EvidenceBundle` + `DeepSeekScoringPort`，失败可回退规则 |
 | 浏览器扩展自动填表 | 规划中 | `autofill.profile` 只是未来路由契约 |
 
 ## 2. 系统上下文
@@ -53,10 +56,10 @@ flowchart LR
     AGENT -. "实验性" .-> MAIL["IMAP 邮箱"]
     CONN -. "源码可选" .-> PW["Playwright"]
     UI -. "未来" .-> EXT["浏览器扩展"]
-    AGENT -. "未来" .-> LLM["LLM Scoring Port"]
+    AGENT -. "可选" .-> LLM["DeepSeek Scoring Port"]
 ```
 
-系统不依赖云端应用服务器。外部网络访问只发生在用户主动运行渠道发现、读取一个明确给出的牛客公开帖子、实验性执行或回执检查时；小红书适配器不直接发起抓取。
+系统不依赖云端应用服务器。外部网络访问发生在用户主动运行渠道发现、读取明确给出的牛客公开帖子、启用云端 Judge 评估、实验性执行或回执检查时；小红书适配器不直接发起抓取。读取推荐卡和保存手工进度不联网。
 
 ## 3. 运行时与入口
 
@@ -104,9 +107,9 @@ flowchart TB
 
 | 层 | 组件 | 职责 | 不应承担 |
 |---|---|---|---|
-| 表现层 | `static/` | 向导、配置、岗位池、台账展示 | 站点解析、评分和数据库判断 |
+| 表现层 | `static/` | 高推荐单卡、全部岗位、求职进度、档案、设置与向导 | 站点解析、评分和数据库判断 |
 | HTTP 层 | `web.py` | 路由、JSON 解析、错误响应、静态资源 | 业务规则和渠道特判 |
-| 应用服务 | `service.py` | 配置/文件协调、简历原子替换、查询门面 | 招聘网站协议 |
+| 应用服务 | `service.py` | 配置/文件协调、简历原子替换、查询门面与手工进度校验 | 招聘网站协议 |
 | 编排层 | `orchestrator.py` | 采集、验证、持久化、评估、规划、执行、跟踪 | 解析具体站点 HTML/JSON |
 | 领域层 | `models.py`、`matching.py`、`scoring.py` | 标准模型、硬规则、评分端口、策略配额 | 网络和文件 I/O |
 | 知识层 | `knowledge/` | 文档准入、主题切块、embedding、混合检索、来源适配和证据审计 | 改写硬规则或直接执行投递 |
@@ -229,6 +232,7 @@ flowchart LR
 - 官网 Connector 没有实现可信 `submit()` 时返回 `needs_human` 和原始链接。
 - 点击后缺少可验证成功证据时进入“结果待核验”，禁止自动重试。
 - IMAP 只检查有时间窗口的近期邮件，并同时匹配公司/岗位身份与成功或拒绝语义。
+- `progress_source=manual` 的记录不进入执行、HR 自动发简历或回执推进流程；每次外部写动作前重新检查，避免旧待执行记录被用户手工接管后继续提交。在途操作产生的真实证据保留，但手工阶段与备注不被改写。
 
 ## 6. 领域模型与状态
 
@@ -243,7 +247,7 @@ flowchart LR
 | `PostDocument` | `(source, normalized_url)` + `content_hash` | 一篇可追溯社区帖及准入元数据 |
 | `KnowledgeChunk` | `document_id + chunk_hash` | 单一决策主题、上下文文本与向量 |
 | `EvidenceBundle` | `job_id + retrieved_at` | 分开的能力证据、需求证据和覆盖度 |
-| Application | 唯一 `job_id` | 投递计划、执行状态和外部证据 |
+| Application | 唯一 `job_id` | 原执行状态/外部证据与独立手工求职进度 |
 | Event | `entity_type + entity_id` | 追加式审计记录 |
 | SourceRun | `source + time` | 渠道最近一次真实运行健康度 |
 
@@ -265,6 +269,12 @@ stateDiagram-v2
 投递状态包含 `待执行`、`已发开场白`、`等待HR回复`、`HR已有效回复`、`已发简历`、`官网已提交待回执`、`投递已确认`、`已拒绝`、`需要登录`、`需要人工处理`、`结果待核验`、`执行失败` 和 `已关闭`。
 
 不同渠道不必经过所有状态，但状态只能由有证据的动作推进。暂时无邮件、页面超时或未知页面文案不能被当作失败后自动重投的依据。
+
+### 手工求职阶段
+
+`recruitment_stage` 独立于原执行 `status`，可编辑值为准备投递、沟通中、提交待确认、已投递、测评、面试、Offer、已结束。它是用户记录的本机事实，不是外部招聘系统的确认。
+
+没有手工值的旧记录在读取时生成保守显示阶段：待执行→准备投递；开场白、HR 回复和已发简历→沟通中；官网已提交待回执→提交待确认；投递已确认→已投递；拒绝或关闭→已结束；其他异常或不确定状态→待确认。只映射返回值，不回写原 `status`。人工修改任意旧记录后，显示阶段以手工值为准，原证据仍保留。
 
 ## 7. 数据存储
 
@@ -300,6 +310,10 @@ erDiagram
         string channel
         string status
         string evidence
+        string recruitment_stage
+        string progress_note
+        string progress_source
+        string progress_updated_at
     }
     EVENTS {
         integer id PK
@@ -354,6 +368,8 @@ erDiagram
 - 只有 `policy_status=accepted` 的父文档拥有 `knowledge_chunks`；向量以 provider 名、维度和 float32 BLOB 一起保存。
 - `evaluation_evidence` 记录能力/需求维度与排名；`knowledge_retrieval_runs` 保留当次完整证据包供审计。
 - schema 变更必须向前兼容；当前采用启动时检测字段并执行小型增量迁移。
+- v0.3.0-alpha 为 `applications` 增量添加 `recruitment_stage TEXT`、`progress_note TEXT NOT NULL DEFAULT ''`、`progress_source TEXT`、`progress_updated_at TEXT` 四列。迁移不重建表、不回写旧状态；旧行的可空字段保留空值，显示时提供兼容映射。
+- 手工创建/更新在事务中保持 `job_id` 唯一。新手工记录的旧 `status` 为需要人工处理，不创建待执行任务；更新旧记录只改四个进度字段，不覆盖执行时间、证据、错误或外部 ID。
 
 ## 8. 渠道扩展架构
 
@@ -402,7 +418,10 @@ class JobConnector(Protocol):
 |---|---|---|
 | GET | `/api/dashboard` | 汇总状态和渠道目录 |
 | GET | `/api/jobs` | 岗位池 |
-| GET | `/api/applications` | 投递台账 |
+| GET | `/api/recommendations` | 当前规则、档案与有效证据生成的只读推荐卡 |
+| GET | `/api/applications` | 原执行字段与有效求职进度 |
+| POST | `/api/applications/manual` | 记录已有岗位的手工阶段与备注；同岗位更新原记录 |
+| PUT | `/api/applications/<id>/progress` | 编辑已有记录的手工阶段与备注 |
 | GET | `/api/events` | 审计事件 |
 | GET/PUT | `/api/config` | 读取或保存配置 |
 | GET/POST | `/api/resume` | 当前简历状态或替换简历 |
@@ -423,6 +442,14 @@ class JobConnector(Protocol):
 | POST | `/api/run/cycle` | 组合运行主流程 |
 
 错误响应保持 `{ "error": "...", "message": "..." }`。增加路由时，业务逻辑应先落在 `AgentService` 或 `JobAgent`，再由 `web.py` 做薄封装。
+
+### 求职进度 API 合同
+
+- POST 请求为 `{ "job_id": 1, "stage": "已投递", "note": "官网手工提交" }`；PUT 请求为 `{ "stage": "面试", "note": "等待第二轮" }`。`note` 可省略，保留已有备注；传空字符串表示清空。显式 `null`、非字符串、超过 2000 字均返回 400。
+- ID 必须为正整数，不接受布尔、浮点、字符串或超过 SQLite 有符号整数范围的值；岗位/记录不存在、缺少必填字段或非法阶段返回 400。
+- 成功响应是完整 application：原 `id/job_id/channel/status/created_at/updated_at/evidence/error/external_id` 及岗位关联字段不删除，新增有效 `recruitment_stage`、`progress_note`、`progress_source`、`progress_updated_at`。手工来源为 `manual`，旧映射为 `legacy_status`，旧更新时间作为显示时间回退。
+- 同一岗位重复 POST 不新建第二条记录，未变更内容不重复追加进度事件；日志仅保存阶段、来源和是否有备注，不复制备注正文。
+- 两个写接口只更新本机 SQLite，不能构造 Connector、调用真实执行器或发送消息。`GET /api/applications` 是列表查询；推荐卡 GET 的严格只读边界独立保留。
 
 ## 10. 配置与兼容性
 
@@ -487,6 +514,7 @@ hard_filter(Job, Candidate, Preferences)
 |---|---|
 | 领域模型或规则 | 对应单元测试 + 全量离线测试 |
 | 数据库 schema | 旧数据库迁移测试 + 新库测试 |
+| 手工求职进度 | 八阶段、备注限制/保留/清空、同岗位幂等、并发录入、旧状态映射、人工接管后禁止执行与在途证据保留 |
 | 文档准入或切块 | accepted/review/rejected/duplicate fixture + PII/页面壳门禁 + 父子溯源 |
 | embedding 或检索权重 | 固定黄金集 Recall@K/nDCG@K + 两路主题、公司和用工类型隔离测试 |
 | LLM Judge | JSON 有效率、金标准确率、引用正确率、硬规则守恒、用工类型泄漏率和证据顺序稳定性 |
@@ -536,4 +564,6 @@ $env:PYTHONPATH='src'
 
 推荐卡按当前配置重新核对学历、经验、薪资口径与已知硬条件；历史评分与旧“已过滤”状态不代替当前档案判断。重复/过期留在岗位池。社区须同公司、岗位族、用工；城市/团队完整对齐才作为直接样本，缺失是背景、明确冲突排除。先按适用性选证据再限量，否定/冲突与面经语义不能变成正向工作体验支持。
 
-前端模块 `static/recommendations.js` 独立负责卡片、筛选、展开、证据焦点和请求状态；`app.js` 负责加载与导航。待遇细项与六组体验数据来自后端契约，所有用户文本转义、外链仅 http(s)且无嵌入凭据。岗位池禁用一键入口没有事件或执行器接线。
+前端模块 `static/recommendations.js` 独立负责高推荐单卡、两侧箭头、局部键盘切换、筛选、展开、证据焦点和请求状态；`app.js` 负责加载、导航、完整岗位列表及进度编辑。高推荐只取 `decision.status=recommend`，沿用当前规则，不以历史 `overall_score` 的统一阈值代替；全部岗位包含其他推荐状态及未评估结果。
+
+待遇细项与六组体验数据来自后端契约，所有用户文本转义、外链仅 http(s) 且无嵌入凭据。箭头节点持续存在，筛选/刷新后校正索引，避免焦点落入已移除卡片；左右键不在文本输入或页面其他区域接管。全部岗位禁用一键入口没有事件或执行器接线，卡片的记录进度入口只调用独立本机 API。

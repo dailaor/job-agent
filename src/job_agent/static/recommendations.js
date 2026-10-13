@@ -1,6 +1,6 @@
 /* Evidence-linked job decisions; this view never submits an application. */
 window.Recommendations = (() => {
-  const local = {data: null, error: "", loading: true, retry: null, goToPool: null};
+  const local = {data: null, error: "", loading: true, retry: null, goToPool: null, index: 0, currentJobId: null, filtered: []};
   const $ = selector => document.querySelector(selector);
   const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -89,7 +89,7 @@ window.Recommendations = (() => {
         <div class="decision-identity"><span class="company-monogram" aria-hidden="true">${escape(monogram)}</span><div><h3 id="decision-title-${id}">${escape(shownTitle)}${card.is_demo ? badge("演示") : ""}</h3><p>${escape(card.company)}<span class="identity-dot" aria-hidden="true">·</span>${escape(card.location || "地点未披露")}</p></div></div>
         <div class="decision-heading-actions">${badge(decision.label || "先核实信息", tone)}${url ? `<a class="button primary" href="${escape(url)}" target="_blank" rel="noopener noreferrer">查看原岗位${icon("external")}</a>` : '<span class="decision-missing">原岗位链接待核实</span>'}</div>
       </div>
-      <div class="decision-source-line"><span>${escape(source)}</span><span>${escape(card.evidence_summary?.label || "证据待补充")}</span><span class="decision-summary">${escape(decision.summary)}</span></div>
+      <div class="decision-source-line"><span>${escape(source)}</span><span>${escape(card.evidence_summary?.label || "证据待补充")}</span></div>
       <div class="decision-readouts">
         <div class="readout-salary">${icon("money")}<dl><dt>薪资待遇</dt><dd class="${isKnownSalary ? "salary-known" : "salary-unknown"}">${escape(card.compensation?.label || "未披露")}</dd></dl></div>
         <div>${icon("shield")}<dl><dt>可投性</dt><dd>${escape(eligibility.label || "门槛待核实")}</dd></dl></div>
@@ -119,7 +119,7 @@ window.Recommendations = (() => {
           <section class="evidence-chain"><h4>证据链</h4><p class="decision-missing">岗位披露与个人经历各自保留来源；背景参考不能证明当前团队情况。</p>${evidence.length ? `<ol class="evidence-list">${evidence.map(item => evidenceItem(card, item)).join("")}</ol>` : '<p class="decision-missing">暂无可回查证据，请先打开原岗位核对。</p>'}</section>
         </div>
       </details>
-      <footer class="decision-card-footer"><span>${escape(card.next_step || (decision.status === "recommend" ? "了解岗位后，再决定是否投递" : "先确认未知信息，再决定是否投递"))}</span></footer>
+      <footer class="decision-card-footer"><button class="button ghost" type="button" data-record-progress="${escape(card.job_id)}">${icon("document")}记录求职进度</button></footer>
     </article>`;
   }
 
@@ -128,52 +128,93 @@ window.Recommendations = (() => {
     const overview = $("#recommendation-overview");
     container.setAttribute("aria-busy", String(local.loading));
     if (local.loading) {
-      overview.textContent = "正在整理岗位与证据…";
-      container.innerHTML = '<div class="recommendation-empty" role="status"><h3>正在核对岗位决策依据</h3><p>读取本机的岗位和有效情报，整理理由、风险与待确认信息。</p></div>';
+      overview.textContent = "正在更新…";
+      updateControls(0, "");
+      container.innerHTML = '<div class="recommendation-empty" role="status"><h3>正在加载推荐岗位</h3></div>';
       return;
     }
     if (local.error) {
-      overview.textContent = "推荐暂时无法更新，岗位池仍可查看。";
-      container.innerHTML = `<div class="recommendation-empty" role="alert"><h3>未能生成推荐卡</h3><p>${escape(local.error)}</p><button class="button primary" data-recommendation-retry>重新加载</button><button class="button ghost" data-recommendation-pool>查看岗位池</button></div>`;
+      overview.textContent = "推荐暂时无法更新";
+      updateControls(0, "");
+      container.innerHTML = `<div class="recommendation-empty" role="alert"><h3>未能加载推荐岗位</h3><p>${escape(local.error)}</p><button class="button primary" type="button" data-recommendation-retry>重新加载</button><button class="button ghost" type="button" data-recommendation-pool>全部岗位</button></div>`;
       return;
     }
     const data = local.data || {items: [], summary: {}};
     const summary = data.summary || {};
     const query = $("#recommendation-search").value.trim().toLowerCase();
-    const status = $("#recommendation-status").value;
     const directOnly = $("#recommendation-evidence-only").checked;
-    const visible = asList(data.items).filter(card => card.default_visible !== false);
+    const visible = asList(data.items).filter(card => card.decision?.status === "recommend" && card.default_visible !== false);
     const filtered = visible.filter(card =>
       (!query || `${card.title} ${card.company} ${card.location}`.toLowerCase().includes(query)) &&
-      (!status || card.decision?.status === status) &&
       (!directOnly || Number(card.evidence_summary?.experience_direct || 0) > 0)
     );
-    $("#recommendation-reset").hidden = !(query || status || directOnly);
-    overview.innerHTML = `<span><strong>${escape(summary.recommended || 0)}</strong> 个优先了解</span><span><strong>${escape(summary.verify || 0)}</strong> 个先核实</span><span><strong>${escape(summary.excluded || 0)}</strong> 个未进入推荐</span><button class="recommendation-pool-link" type="button" data-recommendation-pool>全部岗位在岗位池</button>`;
-    $("#recommendation-order").textContent = `显示 ${filtered.length} 个候选 · 按门槛与直接适用的决策证据优先整理，不代表录用概率。`;
+    local.filtered = filtered;
+    const previousIndex = filtered.findIndex(card => String(card.job_id) === local.currentJobId);
+    local.index = previousIndex >= 0 ? previousIndex : Math.max(0, Math.min(local.index, filtered.length - 1));
+    $("#recommendation-reset").hidden = !(query || directOnly);
+    overview.innerHTML = `<span><strong>${visible.length}</strong> 个高推荐岗位</span><button class="recommendation-pool-link" type="button" data-recommendation-pool>全部岗位</button>`;
+    updateControls(filtered.length);
     if (!filtered.length) {
       const hasItems = visible.length > 0;
-      container.innerHTML = `<div class="recommendation-empty"><h3>${hasItems ? "没有符合筛选的推荐" : summary.total ? "当前没有进入推荐的岗位" : "开始建立你的岗位候选清单"}</h3><p>${hasItems ? "试试清除筛选。缺少体验证据的岗位仍可查看，但会明确保留待核实信息。" : summary.total ? "当前岗位可能有硬条件冲突、已过期或重复。你可以在岗位池查看具体情况，或调整求职条件。" : "先获取岗位，卡片就会整理可投门槛、值得了解的理由、风险与证据。"}</p><button class="button primary" ${hasItems ? 'data-recommendation-clear' : 'data-open-task'}>${hasItems ? "清除筛选" : "寻找匹配岗位"}</button><button class="button ghost" data-recommendation-pool>查看岗位池</button></div>`;
+      local.currentJobId = null;
+      container.innerHTML = `<div class="recommendation-empty"><h3>${hasItems ? "没有符合筛选的高推荐岗位" : "暂无高推荐岗位"}</h3><p>${hasItems ? "清除筛选后查看。" : summary.total ? "其他推荐度的岗位仍在全部岗位中。" : "先获取岗位。"}</p><button class="button primary" type="button" ${hasItems ? 'data-recommendation-clear' : 'data-open-task'}>${hasItems ? "清除筛选" : "获取岗位"}</button><button class="button ghost" type="button" data-recommendation-pool>全部岗位</button></div>`;
       return;
     }
-    container.innerHTML = filtered.map(renderCard).join("");
+    const card = filtered[local.index];
+    local.currentJobId = String(card.job_id);
+    container.innerHTML = renderCard(card);
+  }
+
+  function updateControls(count, label) {
+    const previous = $("#recommendation-prev");
+    const next = $("#recommendation-next");
+    previous.disabled = local.loading || Boolean(local.error) || count < 2 || local.index <= 0;
+    next.disabled = local.loading || Boolean(local.error) || count < 2 || local.index >= count - 1;
+    $("#recommendation-order").textContent = label ?? `${count ? local.index + 1 : 0} / ${count}`;
+    if ((document.activeElement === previous && previous.disabled) || (document.activeElement === next && next.disabled)) {
+      $("#recommendation-carousel").focus({preventScroll: true});
+    }
+  }
+
+  function moveCard(offset) {
+    if (local.loading || local.error) return;
+    const index = local.index + offset;
+    if (index < 0 || index >= local.filtered.length) return;
+    const focusInCard = $("#recommendation-results").contains(document.activeElement);
+    local.index = index;
+    local.currentJobId = String(local.filtered[index].job_id);
+    render();
+    if (focusInCard) $("#recommendation-carousel").focus({preventScroll: true});
+  }
+
+  function resetPage() {
+    local.index = 0;
+    local.currentJobId = null;
+    render();
   }
 
   function clearFilters() {
     $("#recommendation-search").value = "";
-    $("#recommendation-status").value = "";
     $("#recommendation-evidence-only").checked = false;
-    render();
+    resetPage();
     $("#recommendation-search").focus();
   }
 
-  function bind({retry, goToPool, openTask}) {
+  function bind({retry, goToPool, openTask, onRecordProgress}) {
     local.retry = retry;
     local.goToPool = goToPool;
-    $("#recommendation-search").addEventListener("input", render);
-    $("#recommendation-status").addEventListener("change", render);
-    $("#recommendation-evidence-only").addEventListener("change", render);
+    $("#recommendation-search").addEventListener("input", resetPage);
+    $("#recommendation-evidence-only").addEventListener("change", resetPage);
     $("#recommendation-reset").addEventListener("click", clearFilters);
+    $("#recommendation-prev").addEventListener("click", () => moveCard(-1));
+    $("#recommendation-next").addEventListener("click", () => moveCard(1));
+    $("#recommendation-carousel").addEventListener("keydown", event => {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.isContentEditable || event.target.closest("input, textarea, select, [role='textbox']")) return;
+      const offset = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+      if (!offset || local.loading || local.error || local.index + offset < 0 || local.index + offset >= local.filtered.length) return;
+      event.preventDefault();
+      moveCard(offset);
+    });
     $("#view-recommendations").addEventListener("click", event => {
       const button = event.target.closest("button");
       if (!button) return;
@@ -181,6 +222,7 @@ window.Recommendations = (() => {
       if (button.hasAttribute("data-recommendation-pool")) goToPool();
       if (button.hasAttribute("data-recommendation-clear")) clearFilters();
       if (button.hasAttribute("data-open-task") && button.closest(".recommendation-empty")) openTask();
+      if (button.hasAttribute("data-record-progress") && onRecordProgress) onRecordProgress(Number(button.dataset.recordProgress));
       if (button.hasAttribute("data-proof-id")) {
         const details = $(`#decision-details-${safeKey(button.dataset.proofJob)}`);
         if (details) details.open = true;

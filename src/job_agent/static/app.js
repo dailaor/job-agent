@@ -2,6 +2,7 @@ const state = {
   dashboard: {},
   jobs: [],
   applications: [],
+  recommendations: [],
   events: [],
   config: null,
   resume: {configured: false, available: false, filename: "", path: "", profile_source: "manual", text_available: false},
@@ -29,11 +30,13 @@ const KNOWLEDGE_POLICY_LABELS = {accepted: "已入库", needs_review: "待复核
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
-const navigationIcons = {recommendations: "spark", overview: "home", jobs: "briefcase", applications: "document", knowledge: "book", config: "settings", audit: "clock"};
+const navigationIcons = {recommendations: "spark", jobs: "briefcase", applications: "clock", config: "document", settings: "settings"};
 $$('.nav-item').forEach(button => button.insertAdjacentHTML('afterbegin', JobIcons.icon(navigationIcons[button.dataset.view])));
 $("#refresh").insertAdjacentHTML('afterbegin', JobIcons.icon("refresh"));
 $$('.header-actions [data-open-task]').forEach(button => button.insertAdjacentHTML('afterbegin', JobIcons.icon("search")));
 $(".recommendation-search").insertAdjacentHTML('afterbegin', JobIcons.icon("search"));
+$("#recommendation-prev").innerHTML = JobIcons.icon("chevronLeft");
+$("#recommendation-next").innerHTML = JobIcons.icon("chevronRight");
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -155,9 +158,17 @@ async function refreshRecommendations() {
   Recommendations.setLoading();
   try {
     const data = await api("/api/recommendations");
-    if (request === recommendationRequest) Recommendations.setData(data);
+    if (request === recommendationRequest) {
+      state.recommendations = data.items || [];
+      Recommendations.setData(data);
+      renderJobs();
+    }
   } catch (error) {
-    if (request === recommendationRequest) Recommendations.setError(error.message);
+    if (request === recommendationRequest) {
+      state.recommendations = [];
+      Recommendations.setError(error.message);
+      renderJobs();
+    }
   }
 }
 
@@ -230,6 +241,8 @@ function renderChannels() {
 }
 
 function renderJobs() {
+  const decisions = new Map(state.recommendations.map(card => [card.job_id, card.decision?.status]));
+  const recommendationLabel = job => ({recommend: "高推荐", verify: "待核实", not_recommended: "低推荐"})[decisions.get(job.id)] || "未评估";
   const statuses = [...new Set(state.jobs.map(job => job.status))];
   const select = $("#job-status-filter");
   const selected = select.value;
@@ -242,19 +255,100 @@ function renderJobs() {
   );
   $("#jobs-body").innerHTML = rows.length ? rows.map(job => `<tr>
     <td><strong>${escapeHtml(job.title)}</strong><small>${escapeHtml(job.company)} · ${escapeHtml(job.location)}</small></td>
-    <td>${chip(job.source)}</td><td>${chip(job.strategy)}</td>
+    <td>${chip(job.source)}</td><td>${chip(recommendationLabel(job))}</td><td>${chip(job.strategy)}</td>
     <td><span class="score">${job.match_score == null ? "—" : job.match_score}</span><small>${escapeHtml(job.evaluation_reason || "")}</small></td>
     <td><span class="score">${job.need_score == null ? "—" : job.need_score}</span></td><td>${chip(job.status)}</td>
-    <td><a class="button ghost small table-action" href="${escapeHtml(job.apply_url || job.url)}" target="_blank" rel="noopener noreferrer">查看岗位</a></td>
-  </tr>`).join("") : '<tr><td colspan="7" class="empty">没有符合当前条件的岗位</td></tr>';
+    <td>${safeJobUrl(job.apply_url || job.url) ? `<a class="button ghost small table-action" href="${escapeHtml(safeJobUrl(job.apply_url || job.url))}" target="_blank" rel="noopener noreferrer">查看岗位</a>` : '<small>原岗位链接不可用</small>'}<button class="button ghost small table-action" type="button" data-record-progress="${job.id}">记录进度</button></td>
+  </tr>`).join("") : '<tr><td colspan="8" class="empty">没有符合当前条件的岗位</td></tr>';
 }
 
+function safeJobUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : "";
+  } catch (_) { return ""; }
+}
+
+const PROGRESS_STAGES = ["准备投递", "沟通中", "提交待确认", "已投递", "测评", "面试", "Offer", "已结束"];
+let progressRecordId = null;
+let progressSaving = false;
+
 function renderApplications() {
-  $("#applications-body").innerHTML = state.applications.length ? state.applications.map(application => `<tr>
+  const records = state.applications;
+  const counts = [
+    ["全部记录", records.length],
+    ["投递 / 后续阶段", records.filter(row => ["已投递", "测评", "面试", "Offer"].includes(row.recruitment_stage)).length],
+    ["测评 / 面试", records.filter(row => ["测评", "面试"].includes(row.recruitment_stage)).length],
+    ["Offer", records.filter(row => row.recruitment_stage === "Offer").length]
+  ];
+  $("#progress-summary").innerHTML = counts.map(([label, count]) => `<div class="metric"><span>${label}</span><b>${count}</b></div>`).join("");
+  const select = $("#progress-stage-filter");
+  const selected = select.value;
+  const stages = [...new Set([...PROGRESS_STAGES, ...records.map(row => row.recruitment_stage).filter(Boolean)])];
+  select.innerHTML = '<option value="">全部阶段</option>' + stages.map(stage => `<option value="${escapeHtml(stage)}" ${stage === selected ? "selected" : ""}>${escapeHtml(stage)}</option>`).join("");
+  const query = $("#progress-search").value.trim().toLowerCase();
+  const rows = records.filter(row => (!select.value || row.recruitment_stage === select.value) && (!query || `${row.title} ${row.company}`.toLowerCase().includes(query)));
+  $("#applications-body").innerHTML = rows.length ? rows.map(application => `<tr>
     <td><strong>${escapeHtml(application.title)}</strong><small>${escapeHtml(application.company)} · ${escapeHtml(application.location)}</small></td>
-    <td>${chip(application.channel)}</td><td>${chip(application.strategy)}</td><td>${chip(application.status)}</td>
-    <td>${new Date(application.updated_at).toLocaleString("zh-CN")}</td><td><small>${escapeHtml(application.error || application.evidence || "—")}</small></td>
-  </tr>`).join("") : '<tr><td colspan="6" class="empty">还没有投递计划。先评估岗位并生成计划。</td></tr>';
+    <td>${chip(application.channel)}</td><td>${chip(application.recruitment_stage || "待确认")}<small>${application.progress_source === "manual" ? "手动记录" : "系统记录"}</small></td>
+    <td>${escapeHtml(new Date(application.progress_updated_at || application.updated_at).toLocaleString("zh-CN"))}</td>
+    <td><small class="progress-note">${escapeHtml(application.progress_note || "—")}</small>${application.evidence || application.error ? `<details><summary>回执 / 执行记录</summary>${application.evidence ? `<small>${escapeHtml(application.evidence)}</small>` : ""}${application.error ? `<small>${escapeHtml(application.error)}</small>` : ""}<small>${escapeHtml(application.status)}</small></details>` : ""}</td>
+    <td><button class="button ghost small" type="button" data-edit-progress="${application.id}">更新进度</button></td>
+  </tr>`).join("") : `<tr><td colspan="6" class="empty">${records.length ? "没有符合筛选条件的求职记录" : '还没有求职记录，可从推荐卡或全部岗位中“记录进度”'}</td></tr>`;
+}
+
+function fillProgressRecord(record) {
+  progressRecordId = record?.id ?? null;
+  $("#progress-stage").innerHTML = PROGRESS_STAGES.map(stage => `<option>${escapeHtml(stage)}</option>`).join("");
+  if (record && !PROGRESS_STAGES.includes(record.recruitment_stage)) {
+    $("#progress-stage").insertAdjacentHTML("afterbegin", '<option value="" disabled selected>选择当前阶段</option>');
+  } else $("#progress-stage").value = record?.recruitment_stage || "准备投递";
+  $("#progress-note").value = record?.progress_note || "";
+  $("#progress-dialog-title").textContent = record ? "更新求职进度" : "记录求职进度";
+}
+
+function openProgressDialog(jobId = null, recordId = null) {
+  if (progressSaving) return;
+  const record = recordId != null ? state.applications.find(row => row.id === recordId) : state.applications.find(row => row.job_id === jobId);
+  const targetJobId = record?.job_id ?? jobId;
+  const jobs = [...state.jobs];
+  if (record && !jobs.some(job => job.id === record.job_id)) jobs.unshift({id: record.job_id, title: record.title, company: record.company});
+  if (!jobs.length) return toast("请先获取岗位，再记录求职进度", true);
+  $("#progress-job").innerHTML = jobs.map(job => `<option value="${job.id}">${escapeHtml(job.title)} · ${escapeHtml(job.company)}</option>`).join("");
+  if (targetJobId != null) $("#progress-job").value = String(targetJobId);
+  $("#progress-job").disabled = record != null;
+  // Unknown legacy stages require an explicit human choice, not a silent promotion.
+  fillProgressRecord(record || state.applications.find(row => row.job_id === Number($("#progress-job").value)));
+  $("#progress-error").hidden = true;
+  $("#progress-dialog").showModal();
+}
+
+async function saveProgress(event) {
+  event.preventDefault();
+  if (progressSaving) return;
+  progressSaving = true;
+  $("#save-progress").disabled = true;
+  $("#save-progress").textContent = "保存中…";
+  $("#progress-error").hidden = true;
+  try {
+    const body = {stage: $("#progress-stage").value, note: $("#progress-note").value};
+    const path = progressRecordId == null ? "/api/applications/manual" : `/api/applications/${progressRecordId}/progress`;
+    if (progressRecordId == null) body.job_id = Number($("#progress-job").value);
+    const record = await api(path, {method: progressRecordId == null ? "POST" : "PUT", body: JSON.stringify(body)});
+    const index = state.applications.findIndex(row => row.id === record.id);
+    if (index < 0) state.applications.unshift(record);
+    else state.applications[index] = record;
+    renderApplications();
+    $("#progress-dialog").close();
+    toast("求职进度已保存");
+  } catch (error) {
+    $("#progress-error").textContent = error.message;
+    $("#progress-error").hidden = false;
+  } finally {
+    progressSaving = false;
+    $("#save-progress").disabled = false;
+    $("#save-progress").textContent = "保存记录";
+  }
 }
 
 function knowledgeStatusClass(status) {
@@ -554,17 +648,16 @@ function renderEvents() {
 function switchView(view) {
   const focusedView = document.activeElement?.closest(".view");
   const restorePageFocus = focusedView && focusedView.id !== `view-${view}`;
-  const titles = {recommendations: "智能推荐", overview: "求职工作台", jobs: "岗位池", applications: "投递台账", knowledge: "岗位情报库", config: "配置", audit: "审计日志"};
+  const titles = {recommendations: "智能推荐", overview: "运行统计", jobs: "全部岗位", applications: "求职进度", knowledge: "岗位情报库", config: "我的档案", settings: "设置", audit: "运行记录"};
+  if (!titles[view]) return;
   $$(".nav-item").forEach(item => {
-    item.classList.toggle("active", item.dataset.view === view);
-    if (item.dataset.view === view) item.setAttribute("aria-current", "page");
+    const active = item.dataset.view === view || (item.dataset.view === "settings" && ["overview", "knowledge", "audit"].includes(view));
+    item.classList.toggle("active", active);
+    if (active) item.setAttribute("aria-current", "page");
     else item.removeAttribute("aria-current");
   });
   $$(".view").forEach(item => item.classList.toggle("active", item.id === `view-${view}`));
   $("#page-title").textContent = titles[view] || "求职工作台";
-  $("#page-description").textContent = view === "recommendations"
-    ? "看清值得投的理由，也看清要先确认的风险。"
-    : "在本机筛选岗位，保留每一步决策依据。";
   if (restorePageFocus) $("#page-title").focus({preventScroll: true});
 }
 
@@ -572,7 +665,7 @@ function bindGoConfig() {
   $$('[data-go-config]').forEach(button => {
     button.onclick = () => {
       if ($("#channel-dialog").open) $("#channel-dialog").close();
-      switchView("config");
+      switchView("settings");
       setTimeout(() => $("#channel-settings").scrollIntoView({behavior: "smooth", block: "start"}), 50);
     };
   });
@@ -643,7 +736,7 @@ function renderTaskChannels() {
   }
   $$('[data-task-config]').forEach(button => button.onclick = () => {
     $("#task-dialog").close();
-    switchView("config");
+    switchView("settings");
     setTimeout(() => $("#channel-settings").scrollIntoView({behavior: "smooth", block: "start"}), 50);
   });
 }
@@ -864,9 +957,16 @@ async function startSelectedDiscovery() {
   }
 }
 
-async function saveBasicConfig() {
+let configurationSaving = false;
+async function saveBasicConfig(event) {
+  if (configurationSaving) return;
+  configurationSaving = true;
+  const saveProfile = event?.currentTarget?.id !== "save-settings-config";
+  $("#save-basic-config").disabled = true;
+  $("#save-settings-config").disabled = true;
   try {
     const config = JSON.parse(JSON.stringify(state.config));
+    if (saveProfile) {
     config.candidate.name = $("#cfg-name").value.trim();
     config.candidate.headline = $("#cfg-headline").value.trim();
     config.candidate.years_experience = Number($("#cfg-years").value || 0);
@@ -896,6 +996,8 @@ async function saveBasicConfig() {
     config.preferences.company_tiers["不投"] = parseList($("#cfg-tier-skip").value);
     config.preferences.boss_daily_limit = Number($("#cfg-boss-limit").value || 0);
     config.preferences.official_daily_limit = Number($("#cfg-official-limit").value || 0);
+    config.fixed_answers.name = config.candidate.name;
+    } else {
     config.preferences.boss_keywords = parseList($("#cfg-boss-keywords").value);
     config.preferences.official_keywords = parseList($("#cfg-official-keywords").value);
     config.preferences.auto_send_resume_after_reply = $("#cfg-auto-resume").checked;
@@ -903,7 +1005,6 @@ async function saveBasicConfig() {
     config.boss.city_name = $("#cfg-boss-city-name").value.trim();
     config.boss.city_code = $("#cfg-boss-city-code").value.trim();
     config.greetings.default = $("#cfg-greeting").value.trim();
-    config.fixed_answers.name = config.candidate.name;
     config.fixed_answers.phone = $("#cfg-answer-phone").value.trim();
     config.fixed_answers.email = $("#cfg-answer-email").value.trim();
     config.fixed_answers.current_city = $("#cfg-answer-city").value.trim();
@@ -911,11 +1012,16 @@ async function saveBasicConfig() {
     config.mail.enabled = $("#cfg-mail-enabled").checked;
     config.mail.host = $("#cfg-mail-host").value.trim();
     config.mail.username = $("#cfg-mail-username").value.trim();
+    }
     state.config = await api("/api/config", {method: "PUT", body: JSON.stringify(config)});
-    toast("用户配置已验证并保存");
+    toast(saveProfile ? "档案与偏好已保存" : "渠道与执行设置已保存");
     await load();
   } catch (error) {
     toast(error.message, true);
+  } finally {
+    configurationSaving = false;
+    $("#save-basic-config").disabled = false;
+    $("#save-settings-config").disabled = false;
   }
 }
 
@@ -987,6 +1093,26 @@ async function liveRun() {
 }
 
 $$(".nav-item").forEach(button => button.addEventListener("click", () => switchView(button.dataset.view)));
+$$('[data-open-view]').forEach(button => button.addEventListener("click", () => switchView(button.dataset.openView)));
+$("#jobs-body").addEventListener("click", event => {
+  const button = event.target.closest("[data-record-progress]");
+  if (button) openProgressDialog(Number(button.dataset.recordProgress));
+});
+$("#applications-body").addEventListener("click", event => {
+  const button = event.target.closest("[data-edit-progress]");
+  if (button) openProgressDialog(null, Number(button.dataset.editProgress));
+});
+$("#add-progress").addEventListener("click", () => openProgressDialog());
+$("#progress-search").addEventListener("input", renderApplications);
+$("#progress-stage-filter").addEventListener("change", renderApplications);
+$("#progress-form").addEventListener("submit", saveProgress);
+$("#progress-job").addEventListener("change", () => {
+  fillProgressRecord(state.applications.find(row => row.job_id === Number($("#progress-job").value)));
+});
+const closeProgress = () => { if (!progressSaving) $("#progress-dialog").close(); };
+$("#close-progress").addEventListener("click", closeProgress);
+$("#cancel-progress").addEventListener("click", closeProgress);
+$("#progress-dialog").addEventListener("cancel", event => { if (progressSaving) event.preventDefault(); });
 
 $$('[data-action]').forEach(button => button.addEventListener("click", () => {
   const action = button.dataset.action;
@@ -1069,6 +1195,7 @@ $("#task-advanced-rules").addEventListener("toggle", event => {
 $("#job-search").addEventListener("input", renderJobs);
 $("#job-status-filter").addEventListener("change", renderJobs);
 $("#save-basic-config").addEventListener("click", saveBasicConfig);
+$("#save-settings-config").addEventListener("click", saveBasicConfig);
 $("#save-json-config").addEventListener("click", saveJsonConfig);
 $("#cfg-resume-file").addEventListener("change", () => {
   const file = $("#cfg-resume-file").files[0];
@@ -1084,6 +1211,7 @@ $("#cfg-resume-file").addEventListener("change", () => {
 });
 $("#cfg-resume-upload").addEventListener("click", uploadConfigResume);
 $("#open-advanced-channel").addEventListener("click", () => {
+  switchView("settings");
   $("#advanced-config").open = true;
   $("#advanced-config").scrollIntoView({behavior: "smooth", block: "start"});
 });
@@ -1098,7 +1226,8 @@ bindGoConfig();
 Recommendations.bind({
   retry: refreshRecommendations,
   goToPool: () => switchView("jobs"),
-  openTask: openTaskDialog
+  openTask: openTaskDialog,
+  onRecordProgress: jobId => openProgressDialog(jobId)
 });
 syncKnowledgeSource();
 syncKnowledgeFetchGuidance();

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import mimetypes
+import re
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -29,9 +30,12 @@ class ApiHandler(BaseHTTPRequestHandler):
 
     def _body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
-        if length > 16 * 1024 * 1024:
+        if length < 0 or length > 16 * 1024 * 1024:
             raise ValueError("请求内容过大")
-        return json.loads(self.rfile.read(length) or b"{}")
+        body = json.loads(self.rfile.read(length) or b"{}")
+        if not isinstance(body, dict):
+            raise ValueError("请求内容必须是 JSON 对象")
+        return body
 
     def _static(self, relative: str) -> None:
         relative = relative.lstrip("/") or "index.html"
@@ -86,7 +90,11 @@ class ApiHandler(BaseHTTPRequestHandler):
 
     def do_PUT(self) -> None:
         try:
-            if urlparse(self.path).path == "/api/config":
+            path = urlparse(self.path).path
+            progress_match = re.fullmatch(r"/api/applications/([0-9]+)/progress", path)
+            if progress_match:
+                self._json(self.service.update_application_progress(int(progress_match.group(1)), self._body()))
+            elif path == "/api/config":
                 self._json(self.service.update_config(self._body()))
             else:
                 self._json({"error": "not_found"}, 404)
@@ -99,6 +107,9 @@ class ApiHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             body = self._body()
+            if path == "/api/applications/manual":
+                self._json(self.service.record_manual_application(body))
+                return
             if path == "/api/resume":
                 result = self.service.replace_resume(str(body["filename"]), str(body["content_base64"]))
                 self._json(result)

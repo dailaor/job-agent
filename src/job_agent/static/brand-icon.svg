@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="职来 Agent">
-  <path d="M12 47C9 25 22 10 42 9c4 21-8 36-30 38Z" fill="#1b5d4b"/>
-  <path d="M26 55c-2-14 8-25 24-26 3 15-6 26-24 26Z" fill="#399478"/>
-  <path d="M13 55c8-20 19-33 31-43" fill="none" stroke="#f1f7f4" stroke-width="4" stroke-linecap="round"/>
+  <rect x="8" y="8" width="40" height="46" rx="9" fill="#dbe7f7"/>
+  <rect x="16" y="12" width="40" height="46" rx="9" fill="#233b62"/>
+  <path d="M26 24h20M26 31h12" fill="none" stroke="#b7cde9" stroke-width="3" stroke-linecap="round"/>
+  <path d="m27 43 6 6 13-14" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

@@ -9,6 +9,48 @@ from typing import Any, Iterator
 from .models import ApplicationStatus, Evaluation, Job, JobStatus, utc_now
 
 
+RECRUITMENT_STAGES = (
+    "准备投递", "沟通中", "提交待确认", "已投递", "测评", "面试", "Offer", "已结束",
+)
+MAX_PROGRESS_NOTE_LENGTH = 2000
+
+
+def _positive_id(value: Any, label: str) -> int:
+    if type(value) is not int or not 0 < value <= 2**63 - 1:
+        raise ValueError(f"{label}必须是正整数")
+    return value
+
+
+def _validate_progress(stage: Any, note: Any) -> None:
+    if not isinstance(stage, str) or stage not in RECRUITMENT_STAGES:
+        raise ValueError("无效的求职阶段")
+    if note is not None and (not isinstance(note, str) or len(note) > MAX_PROGRESS_NOTE_LENGTH):
+        raise ValueError(f"进度备注必须是最多 {MAX_PROGRESS_NOTE_LENGTH} 字的文本")
+
+
+def _with_progress(record: dict[str, Any]) -> dict[str, Any]:
+    """Expose a cautious stage for old execution records without rewriting them."""
+    if record.get("recruitment_stage") in RECRUITMENT_STAGES:
+        record["progress_source"] = record.get("progress_source") or "manual"
+        record["progress_updated_at"] = record.get("progress_updated_at") or record["updated_at"]
+    else:
+        record["recruitment_stage"] = {
+            ApplicationStatus.PLANNED.value: "准备投递",
+            ApplicationStatus.GREETING_SENT.value: "沟通中",
+            ApplicationStatus.AWAITING_REPLY.value: "沟通中",
+            ApplicationStatus.HR_REPLIED.value: "沟通中",
+            ApplicationStatus.RESUME_SENT.value: "沟通中",
+            ApplicationStatus.OFFICIAL_SUBMITTED.value: "提交待确认",
+            ApplicationStatus.CONFIRMED.value: "已投递",
+            ApplicationStatus.REJECTED.value: "已结束",
+            ApplicationStatus.CLOSED.value: "已结束",
+        }.get(record["status"], "待确认")
+        record["progress_source"] = "legacy_status"
+        record["progress_updated_at"] = record["updated_at"]
+    record["progress_note"] = record.get("progress_note") or ""
+    return record
+
+
 SCHEMA = """
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
@@ -69,6 +111,10 @@ CREATE TABLE IF NOT EXISTS applications (
     error TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
+    recruitment_stage TEXT,
+    progress_note TEXT NOT NULL DEFAULT '',
+    progress_source TEXT,
+    progress_updated_at TEXT,
     UNIQUE(job_id)
 );
 CREATE INDEX IF NOT EXISTS idx_app_status ON applications(status);
@@ -100,12 +146,26 @@ class Database:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as connection:
             connection.executescript(SCHEMA)
+            # Database is opened by concurrent HTTP requests; serialize migrations.
+            connection.execute("BEGIN IMMEDIATE")
             evaluation_columns = {
                 str(row["name"])
                 for row in connection.execute("PRAGMA table_info(evaluations)").fetchall()
             }
             if "need_score" not in evaluation_columns:
                 connection.execute("ALTER TABLE evaluations ADD COLUMN need_score REAL NOT NULL DEFAULT 50")
+            application_columns = {
+                str(row["name"])
+                for row in connection.execute("PRAGMA table_info(applications)").fetchall()
+            }
+            for name, definition in (
+                ("recruitment_stage", "TEXT"),
+                ("progress_note", "TEXT NOT NULL DEFAULT ''"),
+                ("progress_source", "TEXT"),
+                ("progress_updated_at", "TEXT"),
+            ):
+                if name not in application_columns:
+                    connection.execute(f"ALTER TABLE applications ADD COLUMN {name} {definition}")
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
@@ -259,6 +319,71 @@ class Database:
             )
             return int(cursor.lastrowid)
 
+    def record_manual_application(self, job_id: int, stage: str, note: str | None = None) -> int:
+        """Record a user's own progress locally; never enqueue an external action."""
+        _positive_id(job_id, "岗位 ID")
+        _validate_progress(stage, note)
+        now = utc_now()
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            job = connection.execute("SELECT source FROM jobs WHERE id=?", (job_id,)).fetchone()
+            if job is None:
+                raise ValueError("岗位不存在")
+            existing = connection.execute("SELECT * FROM applications WHERE job_id=?", (job_id,)).fetchone()
+            if existing:
+                application_id = int(existing["id"])
+                self._save_progress(connection, dict(existing), stage, note, now)
+                return application_id
+            source = str(job["source"])
+            channel = "official" if source.startswith("official:") else source
+            cursor = connection.execute(
+                """INSERT INTO applications(job_id, channel, status, created_at, updated_at,
+                   recruitment_stage, progress_note, progress_source, progress_updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (job_id, channel, ApplicationStatus.NEEDS_HUMAN.value, now, now,
+                 stage, note or "", "manual", now),
+            )
+            application_id = int(cursor.lastrowid)
+            self._progress_event(connection, application_id, "manual_application_recorded", stage, bool(note), now)
+            return application_id
+
+    def update_application_progress(self, application_id: int, stage: str, note: str | None = None) -> None:
+        _positive_id(application_id, "投递记录 ID")
+        _validate_progress(stage, note)
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            record = connection.execute("SELECT * FROM applications WHERE id=?", (application_id,)).fetchone()
+            if record is None:
+                raise ValueError("投递记录不存在")
+            self._save_progress(connection, dict(record), stage, note, utc_now())
+
+    def _save_progress(
+        self, connection: sqlite3.Connection, record: dict[str, Any], stage: str,
+        note: str | None, now: str,
+    ) -> None:
+        next_note = record.get("progress_note", "") if note is None else note
+        if (record.get("recruitment_stage") == stage and record.get("progress_note") == next_note
+                and record.get("progress_source") == "manual"):
+            return
+        connection.execute(
+            """UPDATE applications SET recruitment_stage=?, progress_note=?, progress_source=?,
+               progress_updated_at=? WHERE id=?""",
+            (stage, next_note, "manual", now, record["id"]),
+        )
+        self._progress_event(connection, int(record["id"]), "application_progress_updated", stage, bool(next_note), now)
+
+    @staticmethod
+    def _progress_event(
+        connection: sqlite3.Connection, application_id: int, event_type: str,
+        stage: str, has_note: bool, now: str,
+    ) -> None:
+        # Notes may contain HR replies or personal details; do not duplicate them in logs.
+        connection.execute(
+            "INSERT INTO events(entity_type, entity_id, event_type, payload_json, occurred_at) VALUES (?, ?, ?, ?, ?)",
+            ("application", str(application_id), event_type,
+             json.dumps({"stage": stage, "source": "manual", "has_note": has_note}, ensure_ascii=False), now),
+        )
+
     def update_application(
         self,
         application_id: int,
@@ -276,7 +401,10 @@ class Database:
             )
         self.event("application", application_id, status.value, {"evidence": evidence, "error": error})
 
-    def list_applications(self, *, status: str | None = None, channel: str | None = None, limit: int = 500) -> list[dict[str, Any]]:
+    def list_applications(
+        self, *, status: str | None = None, channel: str | None = None,
+        limit: int = 500, include_manual: bool = True,
+    ) -> list[dict[str, Any]]:
         clauses: list[str] = []
         params: list[Any] = []
         if status:
@@ -285,6 +413,9 @@ class Database:
         if channel:
             clauses.append("a.channel=?")
             params.append(channel)
+        if not include_manual:
+            clauses.append("COALESCE(a.progress_source, '')<>?")
+            params.append("manual")
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
         params.append(limit)
         with self.connect() as connection:
@@ -292,9 +423,10 @@ class Database:
                 f"""SELECT a.*, j.title, j.company, j.location, j.url, j.apply_url, j.source,
                     e.strategy, e.overall_score FROM applications a
                     JOIN jobs j ON j.id=a.job_id LEFT JOIN evaluations e ON e.job_id=j.id
-                    {where} ORDER BY a.updated_at DESC LIMIT ?""", params
+                    {where} ORDER BY MAX(a.updated_at, COALESCE(a.progress_updated_at, a.updated_at)) DESC,
+                    a.id DESC LIMIT ?""", params
             ).fetchall()
-        return [dict(row) for row in rows]
+        return [_with_progress(dict(row)) for row in rows]
 
     def eligible_jobs_for_sources(self, sources: list[str], limit: int = 500) -> list[dict[str, Any]]:
         """Return unplanned eligible jobs for an explicit set of registered source IDs."""
@@ -317,11 +449,12 @@ class Database:
     def get_application(self, application_id: int) -> dict[str, Any] | None:
         with self.connect() as connection:
             row = connection.execute(
-                """SELECT a.*, j.title, j.company, j.location, j.url, j.apply_url, j.source
-                   FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.id=?""",
+                """SELECT a.*, j.title, j.company, j.location, j.url, j.apply_url, j.source,
+                   e.strategy, e.overall_score FROM applications a JOIN jobs j ON j.id=a.job_id
+                   LEFT JOIN evaluations e ON e.job_id=j.id WHERE a.id=?""",
                 (application_id,),
             ).fetchone()
-        return dict(row) if row else None
+        return _with_progress(dict(row)) if row else None
 
     def list_events(self, limit: int = 200) -> list[dict[str, Any]]:
         with self.connect() as connection:
